@@ -4,6 +4,7 @@ target/*
 !**/src/main/**/target/
 !**/src/test/**/target/
 src/main/resources/static/music/*
+src/main/resources/static/data/*
 *.mp3
 *.wav
 
