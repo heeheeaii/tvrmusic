@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>TVR 音乐播放器</title>
+    <link rel="stylesheet" href="/style/index.css">
+</head>
+
+<body>
+<h1>TVR 音乐播放器</h1>
+
+<div class="audio-container">
+    <audio id="audioPlayer" th:src="@{${musicUrl}}" controls>
+        您的浏览器不支持音频播放。
+    </audio>
+    <div class="track-controls">
+        <button class="track-button" onclick="previousTrack()">上一曲</button>
+        <button class="track-button" onclick="nextTrack()">下一曲</button>
+    </div>
+</div>
+
+<script src="/js/index.js"></script>
+
+</body>
+</html>

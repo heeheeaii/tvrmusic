@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: demo2
+  thymeleaf:
+    cache: false
+
+server:
+  port: 8080
+
+tvr:
+  musicRelativePath: /static/music # in res/static/ 's path
