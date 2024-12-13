@@ -12,9 +12,9 @@ class TTensorInput {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            var t1 = LocalTime.now().nano
+            var t1 = System.currentTimeMillis()
             var a = TensorAudio().audioToTensor("D:\\agi\\tvrmusicnew\\src\\main\\resources\\static\\music\\wav\\tra.wav")
-            var line2 = a.shape.get(1)
+            var line2= a.shape.get(1)
             for (idx in 0 until line2) {
                 var tmp = a.get(NDIndex(":,$idx,:"))
                 var tmpShap = tmp.shape
@@ -30,9 +30,10 @@ class TTensorInput {
                 val xGrad: NDArray = x.getGradient()
 
                 System.out.println(xGrad.toFloatArray().get(0))
-                var t2 = LocalTime.now().nano
+                val t2 = System.currentTimeMillis()
                 println(t2 - t1)
 //                572306100
+//                728483500
             }
         }
     }
