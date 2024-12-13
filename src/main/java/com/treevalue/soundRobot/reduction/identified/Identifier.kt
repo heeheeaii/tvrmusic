@@ -11,11 +11,4 @@ class Identifier {
 //        return inputer.GetTensor()
         return TensorI(1,1)
     }
-
-    companion object {
-        @JvmStatic
-        fun main(args: Array<String>) {
-
-        }
-    }
 }

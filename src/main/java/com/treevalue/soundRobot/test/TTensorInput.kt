@@ -5,12 +5,14 @@ import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
 import com.treevalue.soundRobot.hard.TensorAudio
+import java.time.LocalTime
 
 
 class TTensorInput {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
+            var t1 = LocalTime.now().nano
             var a = TensorAudio().audioToTensor("D:\\agi\\tvrmusicnew\\src\\main\\resources\\static\\music\\wav\\tra.wav")
             var line2 = a.shape.get(1)
             for (idx in 0 until line2) {
@@ -28,6 +30,9 @@ class TTensorInput {
                 val xGrad: NDArray = x.getGradient()
 
                 System.out.println(xGrad.toFloatArray().get(0))
+                var t2 = LocalTime.now().nano
+                println(t2 - t1)
+//                572306100
             }
         }
     }

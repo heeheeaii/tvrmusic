@@ -15,6 +15,11 @@ open class Tensor<T> : Iterator<T> {
         this.data = MutableList(size) { default }
     }
 
+    constructor(ndArray: NDArray) {
+        shape = ndArray.shape.shape.toMutableList().map { it.toInt() }
+        data = ndArray.toFloatArray().toMutableList() as MutableList<T>
+    }
+
     constructor(shape: List<Int>, data: MutableList<T>) {
         size = shape.reduce { acc, it -> acc * it }
         require(size == data.size) { "data number size error" }
@@ -150,17 +155,7 @@ open class Tensor<T> : Iterator<T> {
         return result
     }
 
-
     companion object {
-        fun fromNDArray(ndArray: NDArray): Tensor<Float> {
-            require(ndArray.dataType == DataType.FLOAT32) {
-                "Unsupported NDArray data type: ${ndArray.dataType}. Only FLOAT32 is supported in this method."
-            }
-            val shape = mutableListOf(ndArray.shape)
-            val data = ndArray.toFloatArray().toMutableList()
-            return Tensor(shape, data)
-        }
-
         fun <T> create(shape: List<Int>, initializer: (IntArray) -> T): Tensor<T> {
             val size = shape.reduce { acc, i -> acc * i }
             val data = MutableList<T>(size) { initializer(IntArray(shape.size)) }
