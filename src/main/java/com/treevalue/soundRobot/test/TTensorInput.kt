@@ -11,7 +11,7 @@ class TTensorInput {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            var a = TensorAudio().audioToTensor("D:\\out\\tvrmusic\\src\\main\\resources\\static\\music\\wav\\tra.wav")
+            var a = TensorAudio().audioToTensor("D:\\agi\\tvrmusicnew\\src\\main\\resources\\static\\music\\wav\\tra.wav")
             var line2 = a.shape.get(1)
             for (idx in 0 until line2) {
                 var tmp = a.get(NDIndex(":,$idx,:"))

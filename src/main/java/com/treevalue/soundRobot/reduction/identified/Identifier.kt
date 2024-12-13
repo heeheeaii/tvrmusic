@@ -8,7 +8,8 @@ import com.treevalue.soundRobot.hard.TensorInputer
 class Identifier {
     private lateinit var inputer: TensorInputer
     fun GetTensorFromOuter(): TensorI {
-        return inputer.GetTensor()
+//        return inputer.GetTensor()
+        return TensorI(1,1)
     }
 
     companion object {

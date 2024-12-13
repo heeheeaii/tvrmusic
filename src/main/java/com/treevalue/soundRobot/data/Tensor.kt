@@ -1,5 +1,8 @@
 package com.treevalue.soundRobot.data
 
+import ai.djl.ndarray.NDArray
+import ai.djl.ndarray.types.DataType
+
 open class Tensor<T> : Iterator<T> {
     var shape: List<Int>
         private set
@@ -149,6 +152,15 @@ open class Tensor<T> : Iterator<T> {
 
 
     companion object {
+        fun fromNDArray(ndArray: NDArray): Tensor<Float> {
+            require(ndArray.dataType == DataType.FLOAT32) {
+                "Unsupported NDArray data type: ${ndArray.dataType}. Only FLOAT32 is supported in this method."
+            }
+            val shape = mutableListOf(ndArray.shape)
+            val data = ndArray.toFloatArray().toMutableList()
+            return Tensor(shape, data)
+        }
+
         fun <T> create(shape: List<Int>, initializer: (IntArray) -> T): Tensor<T> {
             val size = shape.reduce { acc, i -> acc * i }
             val data = MutableList<T>(size) { initializer(IntArray(shape.size)) }
@@ -173,5 +185,4 @@ open class Tensor<T> : Iterator<T> {
         }
 
     }
-
 }
