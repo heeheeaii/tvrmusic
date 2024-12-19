@@ -4,6 +4,9 @@ import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
 import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
+import org.knowm.xchart.XYChartBuilder
+import org.knowm.xchart.XYSeries
+import org.knowm.xchart.style.markers.SeriesMarkers
 import java.awt.Color
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
@@ -18,7 +21,31 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
-object ImageConverter {
+object ImageUtil {
+    fun drawScatterPlot(
+        coordinates: List<Pair<Double, Double>>,
+        outputPath: String,
+        multi:Int = 800
+    ) {
+        val xData = coordinates.map { it.first }
+        val yData = coordinates.map { it.second }
+        val width: Int = (xData.size / 300 + 1) * multi
+        val height: Int = width * 3 / 4
+        val chart = XYChartBuilder()
+            .width(width)
+            .height(height)
+            .title("Scatter Plot")
+            .xAxisTitle("X Axis")
+            .yAxisTitle("Y Axis")
+            .build()
+        val series = chart.addSeries("_", xData, yData)
+        series.marker = SeriesMarkers.CIRCLE
+        chart.styler.defaultSeriesRenderStyle = XYSeries.XYSeriesRenderStyle.Scatter
+
+        File(outputPath).outputStream().use {
+            org.knowm.xchart.BitmapEncoder.saveBitmap(chart, it, org.knowm.xchart.BitmapEncoder.BitmapFormat.PNG)
+        }
+    }
     fun loadTensorFromBinary(manager: NDManager, filePath: String, compress: Boolean = true): NDArray {
         val byteList = mutableListOf<Byte>()
         FileInputStream(filePath).use { fis ->
@@ -84,7 +111,7 @@ object ImageConverter {
                 val r = rgbTensor.getUint8(idx, jdx, 0).toFloat()
                 val g = rgbTensor.getUint8(idx, jdx, 1).toFloat()
                 val b = rgbTensor.getUint8(idx, jdx, 2).toFloat()
-                val level: Float = ImageConverter.getGrayLevel(r, g, b)
+                val level: Float = ImageUtil.getGrayLevel(r, g, b)
                 tensor2.set(NDIndex("${idx},${jdx},0"), level)
             }
         }
