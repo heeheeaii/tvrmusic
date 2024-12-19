@@ -72,7 +72,7 @@ class SoundInputer(val musicPath: String) : TensorInputer {
             }
             if (tensor == null && nameList.isNotEmpty()) {
                 counter = 0
-                return TensorI(audioOperator.audioToTensor("$musicPath/${nameList[0]}") )
+                return TensorI(audioOperator.audioToTensor("$musicPath/${nameList[0]}"))
             }
 
         }

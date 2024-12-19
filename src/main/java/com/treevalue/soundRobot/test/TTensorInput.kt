@@ -32,8 +32,6 @@ class TTensorInput {
                 System.out.println(xGrad.toFloatArray().get(0))
                 val t2 = System.currentTimeMillis()
                 println(t2 - t1)
-//                572306100
-//                728483500
             }
         }
     }
