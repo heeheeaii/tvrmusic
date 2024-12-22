@@ -1,4 +1,5 @@
 const audioPlayer = document.getElementById("audioPlayer");
+
 let currentTrackIndex = 0;
 
 function getTrackTimeByMs(soundPlayer) {
@@ -46,4 +47,3 @@ function nextTrack() {
         })
         .catch(error => console.error('Error fetching next track:', error));
 }
-

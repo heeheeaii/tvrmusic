@@ -3,11 +3,10 @@ package com.treevalue.soundRobot.reduction.identified
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
-import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import com.treevalue.soundRobot.hard.Machine
-import kotlinx.coroutines.yield
 import java.io.Closeable
+import java.util.*
 import java.util.concurrent.Executors
 
 class AttentionIdentifier : Closeable {
@@ -48,9 +47,40 @@ class AttentionIdentifier : Closeable {
         TODO("Not yet implemented")
     }
 
-    fun attentionFilter(tensor: NDArray, indexStr: String) {
-        println(indexStr)
+    private fun attentionFilter(tensor: NDArray, part: NDArray, indexStr: String) {
+        val k = (part.size() / separateNum).toInt()
+        val average = getTopKAverage(part, k, true)
+        clearLessThan(average, part)
+        clearBlur(part)
+        reload(tensor, indexStr, part)
+    }
+
+    fun clearBlur(tensor: NDArray) {
         println(tensor)
+    }
+
+    fun reload(tensor: NDArray, indexStr: String, processedSubTensor: NDArray) {
+        tensor.set(NDIndex(indexStr), processedSubTensor)
+    }
+
+    fun clearLessThan(threshold: Float, tensor: NDArray) {
+        tensor.set(tensor.lt(threshold), 0.0f)
+    }
+
+    fun getTopKAverage(tensor: NDArray, k: Int, decrease: Boolean = true): Float {
+        if (k <= 0) {
+            return 0f
+        }
+        val pq = PriorityQueue<Float>()
+        tensor.toFloatArray().forEach {
+            if (pq.size < k) {
+                pq.add(it)
+            } else if (it > pq.first()) {
+                pq.poll()
+                pq.add(it)
+            }
+        }
+        return pq.toFloatArray().average().toFloat()
     }
 
     private fun firstIdentifier(tensor: NDArray) {
@@ -82,15 +112,15 @@ class AttentionIdentifier : Closeable {
             if (indices.size == ranges.size) {
                 val indexStr = indices.mapIndexed { idx, vle -> "${pre[idx]}:${vle}" }.joinToString(",")
                 val slicedTensor = tensor.get(NDIndex(indexStr))
-                attentionFilter(slicedTensor, indexStr)
+                attentionFilter(tensor, slicedTensor, indexStr)
             } else {
-                val index = indices.size
-                for (num in ranges[index]) {
-                    if (index == 0) pre[index] = 0
-                    indices.add(num)
+                val parIdx = indices.size
+                for (idx in 0 until ranges[parIdx].size) {
+                    if (idx == 0) pre[parIdx] = 0
+                    if (idx > 0) pre[parIdx] = ranges[parIdx][idx - 1]
+                    indices.add(ranges[parIdx][idx])
                     traverse(indices)
                     indices.removeAt(indices.size - 1)
-                    if (index != 1) pre[index] = num
                 }
             }
         }

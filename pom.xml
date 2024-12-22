@@ -123,6 +123,11 @@
             <artifactId>kotlinx-coroutines-core-jvm</artifactId>
             <version>1.7.2</version>
         </dependency>
+        <dependency>
+            <groupId>ai.djl</groupId>
+            <artifactId>api</artifactId>
+            <version>0.28.0</version>
+        </dependency>
     </dependencies>
 
     <build>

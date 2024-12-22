@@ -11,6 +11,8 @@ import java.awt.Color
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import java.awt.geom.AffineTransform
+import java.awt.image.ConvolveOp
+import java.awt.image.Kernel
 import java.io.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -22,10 +24,39 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 object ImageUtil {
+    //    more strength than 2
+    private val sharpenKernel1 = floatArrayOf(
+        -1f, 0f, -1f,
+        0f, 5f, 0f,
+        -1f, 0f, -1f
+    )
+
+    private val sharpenKernel2 = floatArrayOf(
+        0f, -1f, 0f,
+        -1f, 5f, -1f,
+        0f, -1f, 0f
+    )
+
+    fun convolve(
+        inputPath: String,
+        outPath: String,
+        convKernel: FloatArray = floatArrayOf(),
+        width: Int = 3,
+        height: Int = 3,
+        type: String = "png"
+    ) {
+        val inputImage: BufferedImage = ImageIO.read(File(inputPath))
+        val kernel = if (convKernel.isNotEmpty()) Kernel(width, height, convKernel)
+        else Kernel(width, height, sharpenKernel1)
+        val convolveOp = ConvolveOp(kernel, ConvolveOp.EDGE_NO_OP, null)
+        val outputImage: BufferedImage = convolveOp.filter(inputImage, null)
+        ImageIO.write(outputImage, type, File(outPath))
+    }
+
     fun drawScatterPlot(
         coordinates: List<Pair<Double, Double>>,
         outputPath: String,
-        multi:Int = 800
+        multi: Int = 800
     ) {
         val xData = coordinates.map { it.first }
         val yData = coordinates.map { it.second }
@@ -46,6 +77,7 @@ object ImageUtil {
             org.knowm.xchart.BitmapEncoder.saveBitmap(chart, it, org.knowm.xchart.BitmapEncoder.BitmapFormat.PNG)
         }
     }
+
     fun loadTensorFromBinary(manager: NDManager, filePath: String, compress: Boolean = true): NDArray {
         val byteList = mutableListOf<Byte>()
         FileInputStream(filePath).use { fis ->
