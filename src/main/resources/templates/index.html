@@ -1,36 +1,36 @@
 <!DOCTYPE html>
 <html lang="english">
 <head>
-<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+    <!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
     <title>Music Player</title>
     <link rel="stylesheet" href="/style/index.css">
 </head>
 <body>
-<img  id="background" alt="back ground img" width="400" height="396"/>
+<img id="background" alt="back ground img" width="400" height="396"/>
 <audio id="song">music src</audio>
 <div class="container">
     <div class="box"></div>
-    <img  id="thumbnail" alt="player img" width="400" height="396"/>
+    <img id="thumbnail" alt="player img" width="400" height="396"/>
 
-    <img  onclick="playPause()" id="play-pause" alt="" width="835" height="835"/>
+    <img onclick="playPause()" id="play-pause" alt="" width="835" height="835"/>
     <img src="/icons/forward.png" onclick="nextTrack()" id="next-song" alt="" width="512" height="512"/>
     <img src="/icons/backward.png" onclick="previousTrack()" id="previous-song" alt="" width="512"
          height="512"/>
-
     <div class="song-artist"></div>
     <div class="song-title"></div>
-    <label for="progress-bar"></label><input
-        type="range"
-        id="progress-bar"
-        min="0"
-        max=""
-        value="0"
-        onchange="changeProgressBar()"/>
+    <label for="progress-bar"></label>
+    <input
+            type="range"
+            id="progress-bar"
+            min="0"
+            max=""
+            value="0"
+            onchange="changeProgressBar()"/>
     <div class="currentTime"></div>
     <div class="durationTime"></div>
 </div>
 </body>
-<script src="/js/index.js" >
+<script src="/js/index.js">
     init()
 </script>
 </html>

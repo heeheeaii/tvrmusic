@@ -6,9 +6,9 @@ const constV = {
         background: "/images/tree.png",
         play: "/icons/play.png"
     },
-    text:{
-        songArtis:"song Artist",
-        songName:"song Name"
+    text: {
+        songArtis: "song Artist",
+        songName: "song Name"
     }
 }
 const background = document.querySelector('#background'); // background derived from album cover below
@@ -37,14 +37,13 @@ function updateProgressValue() {
     progressBar.max = song.duration;
     progressBar.value = song.currentTime;
     document.querySelector('.currentTime').innerHTML = (formatTime(Math.floor(song.currentTime)));
-    if (document.querySelector('.durationTime').innerHTML === "NaN:NaN") {
-        document.querySelector('.durationTime').innerHTML = "0:00";
-    } else {
-        document.querySelector('.durationTime').innerHTML = (formatTime(Math.floor(song.duration)));
-    }
+    document.querySelector('.durationTime').innerHTML = (formatTime(Math.floor(song.duration)));
 }
 
 function formatTime(seconds) {
+    if (!seconds) {
+        return ""
+    }
     let min = Math.floor((seconds / 60));
     let sec = Math.floor(seconds - (min * 60));
     if (sec < 10) {
