@@ -1,26 +1,36 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="english">
 <head>
-    <meta charset="UTF-8">
-    <title>TVR 音乐播放器</title>
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+    <title>Music Player</title>
     <link rel="stylesheet" href="/style/index.css">
 </head>
-
 <body>
-<h1>TVR 音乐播放器</h1>
+<img  id="background" alt="back ground img" width="400" height="396"/>
+<audio id="song">music src</audio>
+<div class="container">
+    <div class="box"></div>
+    <img  id="thumbnail" alt="player img" width="400" height="396"/>
 
-<div class="audio-container">
-    <audio id="audioPlayer" th:src="@{${musicUrl}}" controls>
-        您的浏览器不支持音频播放。
-    </audio>
-    <div class="track-controls">
-        <button class="track-button" onclick="previousTrack()">上一曲</button>
-        <button class="track-button" onclick="nextTrack()">下一曲</button>
-    </div>
+    <img  onclick="playPause()" id="play-pause" alt="" width="835" height="835"/>
+    <img src="/icons/forward.png" onclick="nextTrack()" id="next-song" alt="" width="512" height="512"/>
+    <img src="/icons/backward.png" onclick="previousTrack()" id="previous-song" alt="" width="512"
+         height="512"/>
+
+    <div class="song-artist"></div>
+    <div class="song-title"></div>
+    <label for="progress-bar"></label><input
+        type="range"
+        id="progress-bar"
+        min="0"
+        max=""
+        value="0"
+        onchange="changeProgressBar()"/>
+    <div class="currentTime"></div>
+    <div class="durationTime"></div>
 </div>
-
-<script src="/js/index.js">
-</script>
-
 </body>
+<script src="/js/index.js" >
+    init()
+</script>
 </html>
