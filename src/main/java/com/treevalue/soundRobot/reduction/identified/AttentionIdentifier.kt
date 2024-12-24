@@ -11,7 +11,7 @@ import java.util.concurrent.Executors
 
 class AttentionIdentifier : Closeable {
     private val virtualExecutor = Executors.newVirtualThreadPerTaskExecutor()
-    private val separateNum = 5
+    private val separateNum = 5f
     private val coreNum = Machine.getNumberOfCores()
     private val minAttention = 64
 
@@ -50,9 +50,13 @@ class AttentionIdentifier : Closeable {
     private fun attentionFilter(tensor: NDArray, part: NDArray, indexStr: String) {
         val k = (part.size() / separateNum).toInt()
         val average = getTopKAverage(part, k, true)
+        strengthAttention(part, average)
         clearLessThan(average, part)
-        clearBlur(part)
         reload(tensor, indexStr, part)
+    }
+
+    private fun strengthAttention(part: NDArray, average: Float) {
+        part.muli(part.gt(average).muli(1+1/separateNum))
     }
 
     fun clearBlur(tensor: NDArray) {

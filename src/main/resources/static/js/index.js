@@ -7,8 +7,8 @@ const constV = {
         play: "/icons/play.png"
     },
     text: {
-        songArtis: "song Artist",
-        songName: "song Name"
+        songArtis: "hee hee !",
+        songName: "beautiful tree"
     }
 }
 const background = document.querySelector('#background'); // background derived from album cover below
