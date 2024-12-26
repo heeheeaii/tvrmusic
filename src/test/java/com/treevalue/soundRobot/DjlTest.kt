@@ -5,7 +5,6 @@ import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.types.Shape
 import ai.djl.nn.convolutional.Conv2d.conv2d
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertTimeout
 
 class DjlTest {
     val managerInner: NDManager = NDManager.newBaseManager()
@@ -56,8 +55,9 @@ class DjlTest {
             println(array)
         }
     }
+
     @Test
-    fun inSpace(){
+    fun inSpace() {
         NDManager.newBaseManager().use { manager ->
             val array1 = manager.create(floatArrayOf(1f, 2f, 3f))
             val array2 = manager.create(floatArrayOf(1f, 2f, 3f))
@@ -67,9 +67,12 @@ class DjlTest {
             assert(isEqual12)
             assert(!isEqual13)
         }
-        val t = managerInner.create(floatArrayOf(1f,2f,3f))
-        val t2 = managerInner.create(floatArrayOf(2f,4f,6f))
+        val t = managerInner.create(floatArrayOf(1f, 2f, 3f))
+        val t2 = managerInner.create(floatArrayOf(2f, 4f, 6f))
         assert(t.muli(2).eq(t2).all().getBoolean())
     }
 
+    @Test
+    fun conv() {
+    }
 }

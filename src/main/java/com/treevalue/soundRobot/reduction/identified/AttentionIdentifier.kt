@@ -28,24 +28,37 @@ class AttentionIdentifier : Closeable {
     }
 
     private fun markTensor(tensor: NDArray) {
+//        mark by bound
         TODO("Not yet implemented")
     }
 
     private fun secondClear(tensor: NDArray) {
+//        clear out sharpe of class
         TODO("Not yet implemented")
     }
 
     private fun firstClear(tensor: NDArray) {
+        // clear blur content
         TODO("Not yet implemented")
     }
 
     private fun thirdIdentifier(tensor: NDArray) {
-        TODO("Not yet implemented")
+        val shape = tensor.shape.shape
+        doAttentionActionLittleArea(tensor, ::attentionFilter, shape.toList())
     }
 
     private fun secondIdentifier(tensor: NDArray) {
-        TODO("Not yet implemented")
+        val shape = tensor.shape.shape
+        val steps = shape.mapIndexed { idx, vle ->
+            if (idx == 0) {
+                if (vle / separateNum >= minAttention) vle / separateNum else vle
+            } else {
+                vle
+            }
+        }
+        doAttentionActionLittleArea(tensor, ::attentionFilter, steps)
     }
+
 
     private fun attentionFilter(tensor: NDArray, part: NDArray, indexStr: String) {
         val k = (part.size() / separateNum).toInt()
@@ -56,7 +69,7 @@ class AttentionIdentifier : Closeable {
     }
 
     private fun strengthAttention(part: NDArray, average: Float) {
-        part.muli(part.gt(average).muli(1+1/separateNum))
+        part.muli(part.gt(average).muli(1 + 1 / separateNum))
     }
 
     fun clearBlur(tensor: NDArray) {
@@ -88,8 +101,18 @@ class AttentionIdentifier : Closeable {
     }
 
     private fun firstIdentifier(tensor: NDArray) {
+        doAttentionActionLittleArea(tensor, ::attentionFilter)
+    }
+
+    private fun doAttentionActionLittleArea(
+        tensor: NDArray,
+        attentionFunc: (NDArray, NDArray, String) -> Unit = { _, _, _ -> },
+        steps: List<Number> = emptyList()
+    ) {
         val shape = tensor.shape.shape
-        val steps = shape.map { if (it / separateNum >= minAttention) it / separateNum else it }
+        if (steps.isEmpty()) {
+            shape.forEach { steps.plus(if (it / separateNum >= minAttention) it / separateNum else it) }
+        }
         val pre = shape.map { 0 }.toIntArray()
 
         val ranges = shape.mapIndexed { idx, vle ->
@@ -116,7 +139,7 @@ class AttentionIdentifier : Closeable {
             if (indices.size == ranges.size) {
                 val indexStr = indices.mapIndexed { idx, vle -> "${pre[idx]}:${vle}" }.joinToString(",")
                 val slicedTensor = tensor.get(NDIndex(indexStr))
-                attentionFilter(tensor, slicedTensor, indexStr)
+                attentionFunc(tensor, slicedTensor, indexStr)
             } else {
                 val parIdx = indices.size
                 for (idx in 0 until ranges[parIdx].size) {
