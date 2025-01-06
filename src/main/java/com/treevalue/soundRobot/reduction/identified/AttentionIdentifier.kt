@@ -3,6 +3,7 @@ package com.treevalue.soundRobot.reduction.identified
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
+import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import com.treevalue.soundRobot.hard.Machine
 import java.io.Closeable
@@ -21,7 +22,7 @@ class AttentionIdentifier : Closeable {
         firstIdentifier(copy)
         secondIdentifier(copy)
         thirdIdentifier(copy)
-        firstClear(copy)
+        firstClear(copy, manager)
         secondClear(copy)
         markTensor(copy)
         return copy
@@ -37,9 +38,17 @@ class AttentionIdentifier : Closeable {
         TODO("Not yet implemented")
     }
 
-    private fun firstClear(tensor: NDArray) {
-        // clear blur content
-        TODO("Not yet implemented")
+    private fun firstClear(tensor: NDArray, manager: NDManager, threshold: Float = 0.2f) {
+        // clear smooth zone
+        val gradientX = tensor.get("1:, :").sub(tensor.get(":-1, :"))
+        val gradientY = tensor.get(":, 1:").sub(tensor.get(":, :-1"))
+        val paddedGradientX = manager.zeros(tensor.shape)
+        paddedGradientX.set(NDIndex("1:"), gradientX)
+        val paddedGradientY = manager.zeros(tensor.shape)
+        paddedGradientY.set(NDIndex(":, 1:"), gradientY)
+        val gradientMagnitude = paddedGradientX.pow(2).add(paddedGradientY.pow(2)).pow(0.5)
+        val smoothMask = gradientMagnitude.lt(gradientMagnitude.max().getFloat() * threshold)
+        tensor.set(smoothMask, Float.NaN)
     }
 
     private fun thirdIdentifier(tensor: NDArray) {

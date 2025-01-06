@@ -2,6 +2,7 @@ package com.treevalue.soundRobot.data
 
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.types.DataType
+import ai.djl.ndarray.types.Shape
 
 open class Tensor<T> : Iterator<T> {
     var shape: List<Int>
@@ -144,9 +145,42 @@ open class Tensor<T> : Iterator<T> {
         throw IllegalArgumentException()
     }
 
+    fun prettyPrint(array: NDArray, indent: String = "") {
+        val shape = array.shape
+        val data = array.toFloatArray()
 
-    fun toPrintString(): String {
-        TODO()
+        fun recursivePrint(data: FloatArray, shape: Shape, level: Int, currentIndent: String) {
+            if (shape.dimension() == 0) {
+                println(currentIndent + data[0])
+                return
+            }
+
+            val size = shape[0].toInt()
+            val remainingShape = if (shape.dimension() > 1) shape.slice(1, shape.dimension()) else Shape()
+
+            println(currentIndent + "[")
+            for (i in 0 until size) {
+                val sliceSize = if (remainingShape.dimension() > 0) remainingShape.size().toInt() else 1
+                val start = i * sliceSize
+                val end = start + sliceSize
+
+                if (remainingShape.dimension() > 0) {
+                    val slice = data.sliceArray(start until end)
+                    recursivePrint(slice, remainingShape, level + 1, currentIndent + "  ")
+                } else {
+                    print(currentIndent + "  " + data[start])
+                }
+
+                if (i < size - 1) {
+                    println(",")
+                }
+            }
+            println()
+            print("$currentIndent]")
+        }
+
+        recursivePrint(data, shape, 0, indent)
+        println()
     }
 
     override fun hashCode(): Int {
