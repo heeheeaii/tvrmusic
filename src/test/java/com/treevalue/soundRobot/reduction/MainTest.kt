@@ -3,72 +3,91 @@ import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
 import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
+import ai.djl.util.Utils
 
-fun prettyPrint(array: NDArray, indent: String = "") {
-    val shape = array.shape
-    val data = array.toFloatArray()
+fun normalizeTensor(tensor: NDArray, max: Double = 1.0): NDArray {
+    val min = tensor.min().getFloat()
+    val maxVal = tensor.max().getFloat()
 
-    fun recursivePrint(data: FloatArray, shape: Shape, level: Int, currentIndent: String) {
-        if (shape.dimension() == 0) {
-            println(currentIndent + data[0])
-            return
-        }
+    return if (min == maxVal) {
+        if (min == 0.0f) tensor.zerosLike() else tensor.onesLike().mul(max)
+    } else {
+        val normalizedTensor = tensor.sub(min).div(maxVal - min)
+        normalizedTensor.toType(DataType.FLOAT64, true).mul(max)
+    }
+}
 
-        val size = shape[0].toInt()
-        val remainingShape = if (shape.dimension() > 1) shape.slice(1, shape.dimension()) else Shape()
+fun extractShapeBoundaries(tensor2D: NDArray): NDArray {
+    val rows = tensor2D.shape[0].toInt()
+    val cols = tensor2D.shape[1].toInt()
 
-        println(currentIndent + "[")
-        for (i in 0 until size) {
-            val sliceSize = if (remainingShape.dimension() > 0) remainingShape.size().toInt() else 1
-            val start = i * sliceSize
-            val end = start + sliceSize
+    val boundaries = NDManager.newBaseManager().create(Shape(rows.toLong(), cols.toLong()), DataType.UINT8)
 
-            if (remainingShape.dimension() > 0) {
-                val slice = data.sliceArray(start until end)
-                recursivePrint(slice, remainingShape, level + 1, currentIndent + "  ")
-            } else {
-                print(currentIndent + "  " + data[start])
+    for (i in 1 until rows - 1) {
+        for (j in 1 until cols - 1) {
+            // 如果当前像素值大于0.5，并且有邻居像素值不同（检测边界）
+            if (tensor2D.getFloat(i.toLong(), j.toLong()) > 0.5f) {
+                val neighbors = listOf(
+                    tensor2D.getFloat((i - 1).toLong(), j.toLong()), // 上
+                    tensor2D.getFloat((i + 1).toLong(), j.toLong()), // 下
+                    tensor2D.getFloat(i.toLong(), (j - 1).toLong()), // 左
+                    tensor2D.getFloat(i.toLong(), (j + 1).toLong())  // 右
+                )
+                if (neighbors.any { it <= 0.5f }) {
+                    boundaries.set(NDIndex(i.toLong(), j.toLong()), 1f)
+                }
             }
-
-            if (i < size - 1) {
-                println(",")
-            }
         }
-        println()
-        print(currentIndent + "]")
+    }
+    return boundaries
+}
+
+fun extractLineSegments(tensor1D: NDArray): NDArray {
+    val lineSegments = NDManager.newBaseManager().create(tensor1D.shape)
+    var start = -1
+
+    val nonZeroIndices = tensor1D.toType(DataType.INT32, true).gt(0.5f).toIntArray()
+        .mapIndexed { index, value -> if (value == 1) index else null }
+
+    // 提取线段
+    nonZeroIndices.forEachIndexed { i, idx ->
+        if (start == -1) {
+            start = idx!!
+        }
+        // 判断是否为一个连续段的结束
+        if (i == nonZeroIndices.size - 1 || nonZeroIndices[i]?.plus(1) != nonZeroIndices[i + 1]) {
+            for (j in start..idx!!) {
+                lineSegments.set(NDIndex(j.toLong()), tensor1D.get(j.toLong()))
+            }
+            start = -1
+        }
     }
 
-    recursivePrint(data, shape, 0, indent)
-    println()
+    return lineSegments
 }
 
-fun removeSmoothRegions(manager: NDManager, tensor: NDArray, threshold: Float): NDArray {
-    val gradientX = tensor.get("1:, :").sub(tensor.get(":-1, :"))
-    val gradientY = tensor.get(":, 1:").sub(tensor.get(":, :-1"))
-
-    val paddedGradientX = manager.zeros(tensor.shape)
-    paddedGradientX.set(NDIndex("1:"), gradientX)
-
-    val paddedGradientY = manager.zeros(tensor.shape)
-    paddedGradientY.set(NDIndex(":, 1:"), gradientY)
-
-    val gradientMagnitude = paddedGradientX.pow(2).add(paddedGradientY.pow(2)).pow(0.5)
-
-    val smoothMask = gradientMagnitude.lt(threshold)
-
-    val originalTensor = tensor.duplicate()
-
-    val modifiedTensor = tensor.toType(DataType.FLOAT32, false)
-    modifiedTensor.set(smoothMask, Float.NaN)
-    return modifiedTensor
-}
-
+// 主函数示例使用
 fun main() {
+    // DJL Tensor 使用示例
     val manager = NDManager.newBaseManager()
-    val tensor = manager.randomUniform(0f, 1f, Shape(3,3))
-    val threshold = 0.1f
 
-    val modifiedTensor = removeSmoothRegions(manager, tensor, threshold)
+    // 示例 2D tensor（二维数组）
+    val tensor2D = manager.create(
+        arrayOf(
+            floatArrayOf(0f, 0f, 255f, 255f, 0f),
+            floatArrayOf(0f, 255f, 0f, 0f, 255f),
+            floatArrayOf(255f, 0f, 0f, 0f, 255f),
+            floatArrayOf(0f, 255f, 0f, 0f, 255f),
+            floatArrayOf(0f, 0f, 255f, 255f, 0f)
+        )
+    )
 
-    prettyPrint(modifiedTensor)
+    val tensor1D = manager.create(floatArrayOf(0f, 1f, 1f, 0f, 0f, 2f, 1f, 2f, 0f, 0f, 1f, 1f, 0f))
+
+    val shapeBoundaries = extractShapeBoundaries(tensor2D)
+    val normalizedLineSegments = normalizeTensor(tensor1D)
+    val lineSegments = extractLineSegments(normalizedLineSegments)
+
+    println("Shape Boundaries:\n${shapeBoundaries}")
+    println("Line Endpoints:\n${lineSegments}")
 }

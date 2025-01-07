@@ -1,4 +1,4 @@
-package com.example
+package com.treevalue.soundRobot
 
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDManager
@@ -7,7 +7,7 @@ import ai.djl.nn.convolutional.Conv2d.conv2d
 import org.junit.jupiter.api.Test
 
 class DjlTest {
-    val managerInner: NDManager = NDManager.newBaseManager()
+    private val managerInner: NDManager = NDManager.newBaseManager()
 
     @Test
     fun test() {

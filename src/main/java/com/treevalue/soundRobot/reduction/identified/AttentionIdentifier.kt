@@ -47,6 +47,7 @@ class AttentionIdentifier : Closeable {
         val paddedGradientY = manager.zeros(tensor.shape)
         paddedGradientY.set(NDIndex(":, 1:"), gradientY)
         val gradientMagnitude = paddedGradientX.pow(2).add(paddedGradientY.pow(2)).pow(0.5)
+        // todo wait ensure relative and absolute what effect is better
         val smoothMask = gradientMagnitude.lt(gradientMagnitude.max().getFloat() * threshold)
         tensor.set(smoothMask, Float.NaN)
     }
