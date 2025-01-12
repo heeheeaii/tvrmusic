@@ -25,7 +25,6 @@ fun extractShapeBoundaries(tensor2D: NDArray): NDArray {
 
     for (i in 1 until rows - 1) {
         for (j in 1 until cols - 1) {
-            // 如果当前像素值大于0.5，并且有邻居像素值不同（检测边界）
             if (tensor2D.getFloat(i.toLong(), j.toLong()) > 0.5f) {
                 val neighbors = listOf(
                     tensor2D.getFloat((i - 1).toLong(), j.toLong()), // 上
@@ -49,12 +48,10 @@ fun extractLineSegments(tensor1D: NDArray): NDArray {
     val nonZeroIndices = tensor1D.toType(DataType.INT32, true).gt(0.5f).toIntArray()
         .mapIndexed { index, value -> if (value == 1) index else null }
 
-    // 提取线段
     nonZeroIndices.forEachIndexed { i, idx ->
         if (start == -1) {
             start = idx!!
         }
-        // 判断是否为一个连续段的结束
         if (i == nonZeroIndices.size - 1 || nonZeroIndices[i]?.plus(1) != nonZeroIndices[i + 1]) {
             for (j in start..idx!!) {
                 lineSegments.set(NDIndex(j.toLong()), tensor1D.get(j.toLong()))
@@ -66,12 +63,9 @@ fun extractLineSegments(tensor1D: NDArray): NDArray {
     return lineSegments
 }
 
-// 主函数示例使用
 fun main() {
-    // DJL Tensor 使用示例
     val manager = NDManager.newBaseManager()
 
-    // 示例 2D tensor（二维数组）
     val tensor2D = manager.create(
         arrayOf(
             floatArrayOf(0f, 0f, 255f, 255f, 0f),
