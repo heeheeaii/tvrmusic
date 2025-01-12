@@ -10,18 +10,30 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import javax.sound.sampled.*
 import kotlin.math.log10
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class AudioReceptor(
     private var manager: NDManager? = null,
     private var executor: ScheduledExecutorService? = null
 ) : Closeable {
 
+    private val minFreq = 20 // hz
+    private val durFreq = 5 // hz
     private val channels = 2 // Stereo
     private val sampleRate = 44100.0f // Standard sample rate
-    private val bufferSize = 8820 // Number of samples for ~200ms window
+    private val windowSizeMs = 50L // sound duration window
+    private val bufferSize = (sampleRate * windowSizeMs / 1000).toInt() // Number of samples for duration window
     private val fft = DoubleFFT_1D(bufferSize.toLong())
     private val frequencyBands = 4406 // (22050 - 20) / 5
     private val tensorShape = Shape(channels.toLong(), frequencyBands.toLong())
+    private val sampleBit = 16
+
+    @Volatile
+    private var audioTensor: NDArray? = null
+
+    private var audioLine: TargetDataLine? = null
+    private val audioBuffer = ByteArray(bufferSize * channels * 2) // 16-bit audio, *2 : 8bit * 2
 
     // Variables for file reading
     private var audioInputStream: AudioInputStream? = null
@@ -30,12 +42,8 @@ class AudioReceptor(
     private var fileSampleIndex = 0
     private var fileChannels = 0
     private var fileSampleRate = 0f
+    private var fileBytesRead = 0
 
-    @Volatile
-    private var audioTensor: NDArray? = null
-
-    private var audioLine: TargetDataLine? = null
-    private val audioBuffer = ByteArray(bufferSize * channels * 2) // 16-bit audio
 
     init {
         if (executor == null) {
@@ -53,7 +61,7 @@ class AudioReceptor(
     private fun setupAudioLine() {
         val format = AudioFormat(
             sampleRate,
-            16,
+            sampleBit,
             channels,
             true,
             false
@@ -63,96 +71,112 @@ class AudioReceptor(
             throw IllegalArgumentException("Line not supported")
         }
         audioLine = AudioSystem.getLine(info) as TargetDataLine
-        audioLine!!.open(format, bufferSize * channels * 2)
-        audioLine!!.start()
+        audioLine?.open(format, bufferSize * channels * 2)
+        audioLine?.start()
     }
 
     private fun startCapture() {
-        executor!!.scheduleAtFixedRate({
+        executor?.scheduleAtFixedRate({
             try {
-                val bytesRead = audioLine!!.read(audioBuffer, 0, audioBuffer.size)
-                if (bytesRead > 0) {
-                    val samples = ByteArray(bufferSize * channels * 2)
-                    System.arraycopy(audioBuffer, 0, samples, 0, bytesRead)
-                    val doubleSamples = byteArrayToDouble(samples, channels)
-
-                    val magnitudes = Array(channels) { DoubleArray(frequencyBands) }
-                    for (ch in 0 until channels) {
-                        val fftData = DoubleArray(bufferSize)
-                        System.arraycopy(
-                            doubleSamples, 0, fftData, 0, fftData.size.coerceAtMost(doubleSamples.size)
-                        )
-                        fft.realForward(fftData)
-                        for (i in 0 until frequencyBands) {
-                            val freq = 20 + i * 5
-                            val index = (freq * bufferSize / sampleRate).toInt()
-                            if (index < bufferSize / 2) {
-                                val real = fftData[2 * index]
-                                val imag = fftData[2 * index + 1]
-                                val magnitude = Math.sqrt((real * real + imag * imag))
-                                magnitudes[ch][i] = 20 * log10(magnitude + 1e-6) // dB scale
-                            } else {
-                                magnitudes[ch][i] = 0.0
-                            }
-                        }
+                var offset = 0
+                while (offset < audioBuffer.size) {
+                    val bytesRead = audioLine!!.read(audioBuffer, offset, audioBuffer.size - offset)
+                    if (bytesRead <= 0) {
+                        break
                     }
-
-                    val flatMagnitudes = DoubleArray(channels * frequencyBands) {
-                        if (it < magnitudes[0].size) magnitudes[0][it]
-                        else magnitudes[1][it - magnitudes[0].size]
-                    }
-                    audioTensor = manager!!.create(flatMagnitudes, tensorShape)
+                    offset += bytesRead
+                }
+                if (offset > 0) {
+                    val floatSamples = byteArrayToFloat(audioBuffer, channels)
+                    audioTensor = processAudioSamples(floatSamples)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-        }, 0, 5, TimeUnit.MILLISECONDS) // Update every 5 ms
+        }, 0, windowSizeMs, TimeUnit.MILLISECONDS)
     }
 
-    private fun byteArrayToDouble(bytes: ByteArray, channels: Int): DoubleArray {
-        val samples = DoubleArray(bytes.size / 2 / channels)
-        for (i in samples.indices) {
-            val idx = i * channels * 2
-            for (ch in 0 until channels) {
-                val low = bytes[idx + ch * 2].toInt() and 0xFF
-                val high = bytes[idx + ch * 2 + 1].toInt()
-                val sample = (high shl 8) or low
-                samples[i] += sample / 32768.0 // Normalize to [-1, 1]
+    private fun processAudioSamples(floatSamples: FloatArray): NDArray? {
+        val magnitudes = Array(channels) { DoubleArray(frequencyBands) }
+        for (ch in 0 until channels) {
+            val fftData = DoubleArray(floatSamples.size)
+            for (i in floatSamples.indices) {
+                fftData[i] = floatSamples[i].toDouble()
             }
-            samples[i] = samples[i] / channels
+            fft.realForward(fftData)
+            for (idx in 0 until frequencyBands) {
+                val freq = minFreq + idx * durFreq
+                val index = (freq * fftData.size / sampleRate).toInt()
+                if (index < bufferSize / channels) {
+                    val real = fftData[2 * index]
+                    val imag = fftData[2 * index + 1]
+                    val magnitude = sqrt((real * real + imag * imag))
+                    magnitudes[ch][idx] = 20 * log10(magnitude + 1e-6) // dB scale
+                } else {
+                    magnitudes[ch][idx] = 0.0
+                }
+            }
         }
-        return samples
+        // todo bug for fft
+        val flatArray = FloatArray(frequencyBands * channels)
+        for (idx in magnitudes.indices) {
+            for (jdx in 0 until frequencyBands) {
+                flatArray[idx * (channels) + jdx] = magnitudes[idx][jdx].toFloat()
+            }
+        }
+        return if (manager!!.isOpen) manager!!.create(flatArray, tensorShape) else null
+    }
+
+    private fun byteArrayToFloat(bytes: ByteArray, channels: Int): FloatArray {
+        val channelPerBites = (sampleBit / 8)
+        val channelSamples = FloatArray(bytes.size / channelPerBites)
+        val perChannelSize = channelSamples.size / channels
+        for (idx in 0 until perChannelSize) {
+            for (jdx in 0 until channels) {
+                val sampleBegIdx = idx * channels
+                val low = bytes[sampleBegIdx + jdx * 2].toInt() and 0xFF
+                val high = bytes[sampleBegIdx + jdx * 2 + 1].toInt()
+                val sample = (high shl 8) or low
+                // Normalize to [-1, 1], because it is 16 bit sound, sound use signed number
+                val begIdx = jdx * perChannelSize
+                channelSamples[begIdx + idx] += sample / 2.0.pow(sampleBit - 1.0).toFloat()
+            }
+        }
+        return channelSamples
     }
 
     fun getAudioTensor(): NDArray? {
         return audioTensor
     }
 
-    private fun processAudioSamples(doubleSamples: DoubleArray): NDArray? {
-        val magnitudes = Array(channels) { DoubleArray(frequencyBands) }
-        for (ch in 0 until channels) {
-            val fftData = DoubleArray(bufferSize)
-            System.arraycopy(doubleSamples, 0, fftData, 0, fftData.size.coerceAtMost(doubleSamples.size))
-            fft.realForward(fftData)
-            for (i in 0 until frequencyBands) {
-                val freq = 20 + i * 5
-                val index = (freq * bufferSize / sampleRate).toInt()
-                if (index < bufferSize / 2) {
-                    val real = fftData[2 * index]
-                    val imag = fftData[2 * index + 1]
-                    val magnitude = Math.sqrt((real * real + imag * imag))
-                    magnitudes[ch][i] = 20 * log10(magnitude + 1e-6) // dB scale
-                } else {
-                    magnitudes[ch][i] = 0.0
-                }
-            }
+    fun getAudioFromFile(filePath: String) {
+        try {
+            val file = File(filePath)
+            val fileReader = MpegAudioFileReader()
+            audioInputStream = fileReader.getAudioInputStream(file)
+            val baseFormat = audioInputStream?.format
+            val decodedFormat = AudioFormat(
+                sampleRate,
+                16,
+                baseFormat!!.channels,
+                true,
+                false
+            )
+            audioInputStream = AudioSystem.getAudioInputStream(decodedFormat, audioInputStream)
+            fileChannels = decodedFormat.channels
+            fileSampleRate = decodedFormat.sampleRate
+            fileBuffer = ByteArray(bufferSize * fileChannels * 2)
+            fileSampleIndex = 0
+            fileDoubleSamples = null
+            fileBytesRead = 0
+        } catch (e: Exception) {
+            e.printStackTrace()
+            audioInputStream = null
+            fileBuffer = null
+            fileDoubleSamples = null
+            fileSampleIndex = 0
+            fileBytesRead = 0
         }
-
-        val flatMagnitudes = DoubleArray(channels * frequencyBands) {
-            if (it < magnitudes[0].size) magnitudes[0][it]
-            else magnitudes[1][it - magnitudes[0].size]
-        }
-        return manager!!.create(flatMagnitudes, tensorShape)
     }
 
     fun getAudioTensorFromFile(): NDArray? {
@@ -160,18 +184,22 @@ class AudioReceptor(
             return null
         }
         try {
-            val bytesRead = audioInputStream!!.read(fileBuffer!!, 0, fileBuffer!!.size)
-            if (bytesRead <= 0) {
-                audioInputStream?.close()
-                audioInputStream = null
-                fileBuffer = null
-                fileDoubleSamples = null
-                fileSampleIndex = 0
-                return null
+            var offset = 0
+            while (offset < fileBuffer!!.size) {
+                var bytesRead = audioInputStream!!.read(fileBuffer!!, offset, fileBuffer!!.size - offset)
+                if (bytesRead <= 0) {
+                    audioInputStream?.close()
+                    audioInputStream = null
+                    fileBuffer = null
+                    fileDoubleSamples = null
+                    fileSampleIndex = 0
+                    fileBytesRead = 0
+                    return null
+                }
+                offset += bytesRead
             }
-            val samples = ByteArray(bytesRead)
-            System.arraycopy(fileBuffer!!, 0, samples, 0, bytesRead)
-            val doubleSamples = byteArrayToDouble(samples, fileChannels)
+            fileBytesRead += offset
+            val doubleSamples = byteArrayToFloat(fileBuffer!!, fileChannels)
             return processAudioSamples(doubleSamples)
         } catch (e: Exception) {
             e.printStackTrace()
@@ -180,42 +208,17 @@ class AudioReceptor(
             fileBuffer = null
             fileDoubleSamples = null
             fileSampleIndex = 0
+            fileBytesRead = 0
             return null
         }
     }
 
-    fun getAudioFromFile(filePath: String) {
-        try {
-            val file = File(filePath)
-            val fileReader = MpegAudioFileReader()
-            audioInputStream = fileReader.getAudioInputStream(file)
-            val baseFormat = audioInputStream!!.format
-            val decodedFormat = AudioFormat(
-                sampleRate,
-                16,
-                baseFormat.channels,
-                true,
-                false
-            )
-            audioInputStream = AudioSystem.getAudioInputStream(decodedFormat, audioInputStream)
-            fileChannels = decodedFormat.channels
-            fileSampleRate = decodedFormat.sampleRate
-            fileBuffer = ByteArray(bufferSize * fileChannels * 2) // Buffer for file reading
-            fileSampleIndex = 0
-            fileDoubleSamples = null
-        } catch (e: Exception) {
-            e.printStackTrace()
-            audioInputStream = null
-            fileBuffer = null
-            fileDoubleSamples = null
-            fileSampleIndex = 0
-        }
-    }
 
     override fun close() {
         executor?.shutdown()
         audioLine?.stop()
         audioLine?.close()
         manager?.close()
+        audioInputStream?.close()
     }
 }
