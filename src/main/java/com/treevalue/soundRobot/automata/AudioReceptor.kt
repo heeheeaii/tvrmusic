@@ -98,16 +98,18 @@ class AudioReceptor(
 
     private fun processAudioSamples(floatSamples: FloatArray): NDArray? {
         val magnitudes = Array(channels) { DoubleArray(frequencyBands) }
+        val perSize = floatSamples.size / channels
         for (ch in 0 until channels) {
-            val fftData = DoubleArray(floatSamples.size)
-            for (i in floatSamples.indices) {
-                fftData[i] = floatSamples[i].toDouble()
+            val fftData = DoubleArray(perSize)
+            for (i in 0 until perSize) {
+                fftData[i] = floatSamples[ch * perSize + i].toDouble()
             }
             fft.realForward(fftData)
+            val fftSize = perSize / 2 + 1 // Number of unique frequencies
             for (idx in 0 until frequencyBands) {
                 val freq = minFreq + idx * durFreq
-                val index = (freq * fftData.size / sampleRate).toInt()
-                if (index < bufferSize / channels) {
+                val index = (freq * perSize / sampleRate / 2).toInt() // Correct index calculation
+                if (index < fftSize) { // Check if index is within valid range
                     val real = fftData[2 * index]
                     val imag = fftData[2 * index + 1]
                     val magnitude = sqrt((real * real + imag * imag))
@@ -117,11 +119,10 @@ class AudioReceptor(
                 }
             }
         }
-        // todo bug for fft
         val flatArray = FloatArray(frequencyBands * channels)
-        for (idx in magnitudes.indices) {
+        for (idx in 0 until channels) {
             for (jdx in 0 until frequencyBands) {
-                flatArray[idx * (channels) + jdx] = magnitudes[idx][jdx].toFloat()
+                flatArray[idx * (frequencyBands) + jdx] = magnitudes[idx][jdx].toFloat()
             }
         }
         return if (manager!!.isOpen) manager!!.create(flatArray, tensorShape) else null
@@ -186,7 +187,7 @@ class AudioReceptor(
         try {
             var offset = 0
             while (offset < fileBuffer!!.size) {
-                var bytesRead = audioInputStream!!.read(fileBuffer!!, offset, fileBuffer!!.size - offset)
+                val bytesRead = audioInputStream!!.read(fileBuffer!!, offset, fileBuffer!!.size - offset)
                 if (bytesRead <= 0) {
                     audioInputStream?.close()
                     audioInputStream = null

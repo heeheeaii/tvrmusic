@@ -2,6 +2,11 @@ package com.treevalue.soundRobot.autom
 
 import AudioReceptor
 import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.core.io.Resource
+import org.springframework.core.io.ResourceLoader
+import org.springframework.stereotype.Component
+import java.io.File
 import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -34,8 +39,14 @@ class AudioTest {
                 counter++
                 tensor = audioReceptor.getAudioTensorFromFile()
             }
-            println("total $counter")
+            println("total $counter") // but should 8040
             executor.shutdown()
         }
     }
+
+    @Test
+    fun resourceTest() {
+        val a1 = AudioTest::class.java.classLoader.getResource("static/music/凌晨三点钟 - JS.mp3")
+    }
 }
+
