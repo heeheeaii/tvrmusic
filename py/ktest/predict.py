@@ -1,7 +1,6 @@
 import tensorflow as tf
 import keras
 from keras import layers, models  # 导入 models
-import numpy as np
 
 class MyCustomLayer(layers.Layer):
     def __init__(self, units=32, activation=None, **kwargs):
