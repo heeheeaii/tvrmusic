@@ -1,12 +1,27 @@
+import threading
+
 import tensorflow as tf
 import keras
 import numpy as np
 import uuid
 from collections import OrderedDict
 
+
 class NeuralStorage(keras.Model):
-    def __init__(self, input_size, encoding_size, memory_capacity=10):
+    _instance = None
+    _lock = threading.Lock()
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            with cls._lock:
+                if not cls._instance:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self, input_size, encoding_size, memory_capacity=12000):
+        # 20Hz * 600s
         super(NeuralStorage, self).__init__()
+        self.optimizer = keras.optimizers.AdamW(learning_rate=0.0005)
         self.input_size = input_size
         self.encoding_size = encoding_size
         self.memory_capacity = memory_capacity
@@ -18,7 +33,7 @@ class NeuralStorage(keras.Model):
             keras.layers.Dense(encoding_size, activation='tanh'),  # add
             keras.layers.Dropout(0.2),  # add
             keras.layers.Dense(encoding_size, activation='tanh')
-        ])
+    ])
 
         # 解码器
         self.decoder = keras.Sequential([
@@ -27,12 +42,14 @@ class NeuralStorage(keras.Model):
             keras.layers.Dense(encoding_size, activation='tanh'),  # add
             keras.layers.Dropout(0.2),  # add
             keras.layers.Dense(input_size, activation='sigmoid')
-        ])
+    ])
+
 
     def call(self, x):
         encoded = self.encoder(x)
         decoded = self.decoder(encoded)
         return decoded
+
 
     def train_step(self, data):
         with tf.GradientTape() as tape:
@@ -42,12 +59,14 @@ class NeuralStorage(keras.Model):
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         return {"loss": loss}
 
+
     def store(self, key, data):
         input_data = self.preprocess_data(data)
         self.train(input_data)
         self.memory[key] = input_data
         self._enforce_memory_capacity()
         return input_data
+
 
     def retrieve(self, key):
         if key in self.memory:
@@ -56,9 +75,11 @@ class NeuralStorage(keras.Model):
         else:
             return None
 
+
     def store_and_retrieve(self, key, data):
-        encoded_data = self.store(key, data)
+        self.store(key, data)
         return self.retrieve(key)
+
 
     def preprocess_data(self, data):
         if isinstance(data, str):
@@ -83,17 +104,20 @@ class NeuralStorage(keras.Model):
 
         return tf.convert_to_tensor(padded_data.reshape(1, -1), dtype=tf.float32)
 
-    def postprocess_data(self, output):
+
+    @staticmethod
+    def postprocess_data(output):
         output_data = output.numpy().flatten()
         output_data = (output_data * 255).astype(np.uint8)
         return output_data.tobytes()
 
+
     def train(self, data, epochs=200):
-        self.optimizer = keras.optimizers.AdamW(learning_rate=0.0005)
         for epoch in range(epochs):
             metrics = self.train_step(data)
             if epoch % 20 == 0:
                 print(f"Epoch: {epoch}, Loss: {metrics['loss']}")
+
 
     def _enforce_memory_capacity(self):
         while len(self.memory) > self.memory_capacity:

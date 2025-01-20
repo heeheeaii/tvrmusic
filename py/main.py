@@ -1,21 +1,21 @@
 from fastapi import FastAPI
 import uvicorn
-from rpc.netTensor import NetTensor
+from remote.router import rRouter
 
 app = FastAPI()
 
+app.include_router(rRouter, tags=["tensor"])
 
-@app.get("/search")
-def get_search(tensor: NetTensor):
-    pass
+
+class AppRunner:
+    def __init__(self, host='0.0.0.0', port=12000):
+        self.host = host
+        self.port = port
+
+    def run(self):
+        uvicorn.run(app, host=self.host, port=self.port)
 
 
 if __name__ == '__main__':
-    tensor1 = NetTensor(shape=[2, 2], data=[1.0, 2.0, 3.0, 4.0])
-    print(tensor1)
-    print(tensor1.shape)
-    print(tensor1.data)
-
-    tensor2 = NetTensor(shape=[4], data=[1, 2, 3])
-    print(tensor2)
-    uvicorn.run(app, host='0.0.0.0', port=12000)
+    app_runner = AppRunner()
+    app_runner.run()

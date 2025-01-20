@@ -9,7 +9,7 @@
             "python_version": "3.11"
         },
         "sources": [
-            {
+            
                 "name": "pip_conf_index_global",
                 "url": "https://pypi.tuna.tsinghua.edu.cn/simple",
                 "verify_ssl": true
