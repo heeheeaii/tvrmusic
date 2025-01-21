@@ -7,6 +7,7 @@ src/main/resources/static/music/*
 src/main/resources/static/data/*
 *.mp3
 *.wav
+*.pyc
 
 ### STS ###
 .apt_generated
