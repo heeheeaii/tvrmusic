@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from remote.netTensor import NetTensor
-from neuronalMemory.NeuronalMemory import NeuralStorage
+from neuronalMemory.neuronalMemory import NeuralStorage
 from neuronalMemory.task import TaskQueue
 
 rRouter = APIRouter()
