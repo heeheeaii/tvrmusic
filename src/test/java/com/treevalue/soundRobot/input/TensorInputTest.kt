@@ -1,14 +1,13 @@
-package com.treevalue.soundRobot.test
+package com.treevalue.soundRobot.input
 
 import ai.djl.engine.Engine
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
 import com.treevalue.soundRobot.hard.TensorAudio
-import java.time.LocalTime
 
 
-class TTensorInput {
+class TensorInputTest {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {

@@ -1,5 +1,4 @@
 import threading
-
 import tensorflow as tf
 import keras
 import numpy as np
@@ -19,6 +18,7 @@ class NeuralStorage(keras.Model):
         return cls._instance
 
     def __init__(self, input_size=1024, encoding_size=512, memory_capacity=12000):
+        self.hz = 20
         # 20Hz * 600s
         super(NeuralStorage, self).__init__()
         self.optimizer = keras.optimizers.AdamW(learning_rate=0.0005)
@@ -30,17 +30,17 @@ class NeuralStorage(keras.Model):
         self.encoder = keras.Sequential([
             keras.layers.Dense(256, activation='relu'),
             keras.layers.Dropout(0.2),
-            keras.layers.Dense(encoding_size, activation='tanh'),  # add
-            keras.layers.Dropout(0.2),  # add
+            keras.layers.Dense(encoding_size, activation='tanh'),
+            keras.layers.Dropout(0.2),
             keras.layers.Dense(encoding_size, activation='tanh')
         ])
 
-        # 解码器
+        # Decoder
         self.decoder = keras.Sequential([
             keras.layers.Dense(256, activation='relu'),
             keras.layers.Dropout(0.2),
-            keras.layers.Dense(encoding_size, activation='tanh'),  # add
-            keras.layers.Dropout(0.2),  # add
+            keras.layers.Dense(encoding_size, activation='tanh'),
+            keras.layers.Dropout(0.2),
             keras.layers.Dense(input_size, activation='sigmoid')
         ])
 
@@ -81,14 +81,14 @@ class NeuralStorage(keras.Model):
         elif isinstance(data, bytes):
             data = np.frombuffer(data, dtype=np.uint8)
         elif isinstance(data, np.ndarray):
-            pass  # 如果已经是 NumPy 数组，则不进行处理
+            pass  # If it's already a NumPy array, do nothing
         else:
             raise ValueError("Unsupported data type")
 
-        # 将数据缩放到 [0, 1] 范围
+        # Normalize data to [0, 1] range
         data = data.astype(np.float32) / 255.0
 
-        # 填充或截断数据以匹配输入大小
+        # Pad or truncate to match input size
         if data.size < self.input_size:
             padded_data = np.pad(data, (0, self.input_size - data.size), 'constant')
         elif data.size > self.input_size:
@@ -114,6 +114,73 @@ class NeuralStorage(keras.Model):
         while len(self.memory) > self.memory_capacity:
             oldest_key = next(iter(self.memory))
             del self.memory[oldest_key]
+
+    def get_nearby(self, center_key):
+        """
+        Retrieve the closest stored key to the center_key by comparing
+        their encoded data representations. Only looks at adjacent keys
+        (within 1 position before and after).
+        """
+        if center_key not in self.memory:
+            return None
+
+        keys = list(self.memory.keys())
+        center_idx = keys.index(center_key)
+
+        # Check previous and next items, if possible
+        prev_key = keys[center_idx - 1] if center_idx > 0 else None
+        next_key = keys[center_idx + 1] if center_idx < len(keys) - 1 else None
+
+        # Retrieve the closest key based on data similarity (mean squared error)
+        center_data = self.memory[center_key]
+
+        # Calculate similarities (MSE) for the previous and next keys
+        similarities = []
+        if prev_key:
+            prev_data = self.memory[prev_key]
+            mse = np.mean((center_data - prev_data) ** 2)
+            similarities.append((prev_key, mse))
+
+        if next_key:
+            next_data = self.memory[next_key]
+            mse = np.mean((center_data - next_data) ** 2)
+            similarities.append((next_key, mse))
+
+        # Find the key with the minimum MSE (i.e., most similar)
+        if similarities:
+            return min(similarities, key=lambda x: x[1])[0]
+        else:
+            return None
+
+    def get_nearby_from_to(self, from_key, to_key):
+        """
+        Retrieves keys within a range of "from_key" to "to_key"
+        using the get_nearby method. Returns a list of stored data
+        from the nearby keys.
+        """
+        nearby_keys = []
+        keys = list(self.memory.keys())
+
+        try:
+            from_idx = keys.index(from_key)
+            to_idx = keys.index(to_key)
+        except ValueError:
+            return []
+
+        for i in range(from_idx, to_idx + 1):
+            nearby_key = self.get_nearby(keys[i])
+            if nearby_key:
+                nearby_keys.append(self.memory[nearby_key])
+
+        return [self.postprocess_data(self(nearby_key)) for nearby_key in nearby_keys]
+
+    def saveTensor(self, key, tensor):
+        """
+        Saves the provided tensor with the given key.
+        """
+        tensor_data = self.preprocess_data(tensor)
+        self.store(key, tensor_data)
+        print(f"Tensor with key {key} has been saved.")
 
 
 if __name__ == "__main__":

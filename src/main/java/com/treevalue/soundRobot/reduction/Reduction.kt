@@ -19,6 +19,10 @@ class Reduction(private val manage: NDManager = TensorManager.getManager()) {
         var preTime = 0 // us
     }
 
+    fun get(from: Long, toExclude: Long): List<NDArray> {
+        TODO()
+    }
+
     fun accept(tensor: NDArray): Unit {
         val now = System.currentTimeMillis() * 1000 + System.nanoTime() / 1000
         if (now - preTime < period) {
@@ -31,7 +35,6 @@ class Reduction(private val manage: NDManager = TensorManager.getManager()) {
             memory[now] = tensor
         }
     }
-
 
     fun findBack(): Iterator<NDArray> {
         lock.read {
@@ -55,7 +58,7 @@ class Reduction(private val manage: NDManager = TensorManager.getManager()) {
                     val currentIndex = memory.keys.indexOf(currentKey)
                     currentKey = if (currentIndex > 0) {
                         memory.keys.elementAtOrNull(currentIndex - 1)
-                    }else{
+                    } else {
                         null
                     }
                     return value

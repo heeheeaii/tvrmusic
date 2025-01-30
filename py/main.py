@@ -6,7 +6,6 @@ app = FastAPI()
 
 app.include_router(rRouter, tags=["tensor"])
 
-
 class AppRunner:
     def __init__(self, host='0.0.0.0', port=12000):
         self.host = host
