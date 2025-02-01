@@ -3,8 +3,6 @@ package com.treevalue.soundRobot.io
 import com.treevalue.soundRobot.hard.io.IoUtil
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import java.io.FileInputStream
-import java.io.ObjectInputStream
 import java.io.Serializable
 
 data class MyData(val id: Int, val name: String) : Serializable
@@ -18,7 +16,6 @@ class IoTest {
         val d2 = IoUtil.readObjectFromFile<MyData>(path)!!
         Assertions.assertEquals(d.name, d2.name)
         Assertions.assertEquals(d.id, d2.id)
-
     }
 
     @Test
