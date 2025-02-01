@@ -18,7 +18,8 @@ class LimitedStorage(private val capacity: Int) {
     fun calculateAttentionScore(tensor: Array<FloatArray>, sensorType: SensorType): Float {
         val flatTensor = tensor.flatMap { it.toList() }
         val average = flatTensor.average().toFloat()
-        val variance = flatTensor.fold(0.0) { acc, x -> acc + (x - average).toDouble().pow(2.0) }.toFloat() / flatTensor.size
+        val variance =
+            flatTensor.fold(0.0) { acc, x -> acc + (x - average).toDouble().pow(2.0) }.toFloat() / flatTensor.size
         val sensorWeight = if (sensorType == SensorType.VISUAL) 1.0f else 0.8f
         return (average + variance) * sensorWeight
     }

@@ -20,4 +20,11 @@ class IoTest {
         Assertions.assertEquals(d.id, d2.id)
 
     }
+
+    @Test
+    fun imgTensorTest() {
+        val path = "D:\\agi\\tvrmusicnew\\py\\ktest\\images\\out_0000.jpg"
+        val ts = IoUtil.imgToTensor(path)
+        println(ts?.shape)
+    }
 }

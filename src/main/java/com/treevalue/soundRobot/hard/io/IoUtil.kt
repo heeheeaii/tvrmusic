@@ -1,6 +1,12 @@
 package com.treevalue.soundRobot.hard.io
 
+import ai.djl.modality.cv.Image
+import ai.djl.modality.cv.ImageFactory
+import ai.djl.ndarray.NDArray
+import ai.djl.ndarray.NDManager
+import com.treevalue.soundRobot.hard.TensorManager
 import java.io.*
+import java.nio.file.Paths
 
 object IoUtil {
     fun <T : Serializable> saveObjectToFile(obj: T, objPath: String) {
@@ -18,4 +24,16 @@ object IoUtil {
             }
         }
     }
+
+    // (height, width, channel)
+    fun imgToTensor(imagePath: String): NDArray? {
+        val file = File(imagePath)
+        if (!file.exists() || !file.isFile) {
+            return null
+        }
+        val image: Image = ImageFactory.getInstance().fromFile(Paths.get(imagePath))
+        val manager: NDManager = TensorManager.getManager()
+        return image.toNDArray(manager)
+    }
+
 }

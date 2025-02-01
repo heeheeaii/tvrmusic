@@ -8,7 +8,7 @@ src/main/resources/static/data/*
 *.mp3
 *.wav
 *.pyc
-
+*.jpg
 ### STS ###
 .apt_generated
 .classpath
