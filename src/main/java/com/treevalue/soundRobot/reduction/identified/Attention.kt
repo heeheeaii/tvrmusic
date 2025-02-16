@@ -3,14 +3,13 @@ package com.treevalue.soundRobot.reduction.identified
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
-import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import com.treevalue.soundRobot.hard.Machine
 import java.io.Closeable
 import java.util.*
 import java.util.concurrent.Executors
 
-class AttentionIdentifier : Closeable {
+class Attention : Closeable {
     private val virtualExecutor = Executors.newVirtualThreadPerTaskExecutor()
     private val separateNum = 5f
     private val coreNum = Machine.getNumberOfCores()
@@ -173,7 +172,7 @@ class AttentionIdentifier : Closeable {
         fun main(args: Array<String>) {
             val manager = NDManager.newBaseManager()
             val t1 = manager.randomNormal(Shape(320, 320, 15))
-            AttentionIdentifier().firstIdentifier(t1)
+            Attention().firstIdentifier(t1)
         }
     }
 }

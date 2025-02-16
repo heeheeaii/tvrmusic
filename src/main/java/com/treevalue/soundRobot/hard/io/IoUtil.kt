@@ -35,5 +35,4 @@ object IoUtil {
         val manager: NDManager = TensorManager.getManager()
         return image.toNDArray(manager)
     }
-
 }

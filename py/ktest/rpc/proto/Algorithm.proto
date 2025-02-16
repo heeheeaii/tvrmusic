@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.treevalue.soundRobot.rpc;
+
+service Algorithm{
+  rpc Echo (InputMsg) returns (EchoMsg) {}
+}
+
+
+message InputMsg {
+  string input = 1;
+}
+
+
+message EchoMsg {
+  string output = 1;
+}
