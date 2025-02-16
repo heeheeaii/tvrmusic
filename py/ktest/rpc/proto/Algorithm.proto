@@ -3,7 +3,7 @@ syntax = "proto3";
 package com.treevalue.soundRobot.rpc;
 
 service Algorithm{
-  rpc Echo (InputMsg.1) returns (EchoMsg) {}
+  rpc Echo (InputMsg) returns (EchoMsg) {}
 }
 
 
