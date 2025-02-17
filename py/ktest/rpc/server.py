@@ -1,7 +1,7 @@
 import grpc
 from concurrent import futures
-import ktest.rpc.proto.Algorithm_pb2 as Algorithm_pb2
-import ktest.rpc.proto.Algorithm_pb2_grpc as Algorithm_pb2_grpc
+
+from rpc import Algorithm_pb2_grpc, Algorithm_pb2
 
 
 class AlgorithmImpl(Algorithm_pb2_grpc.Algorithm):

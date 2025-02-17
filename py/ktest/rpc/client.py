@@ -1,13 +1,13 @@
 import grpc
-import ktest.rpc.helloword_pb2 as helloword_pb2
-import ktest.rpc.helloword_pb2_grpc as helloword_pb2_grpc
 
+import rpc.Algorithm_pb2 as Algorithm_pb2
+import rpc.Algorithm_pb2_grpc as Algorithm_pb2_grc
 
 def run():
     with grpc.insecure_channel('localhost:50051') as channel:
-        stub = helloword_pb2_grpc.GreeterStub(channel)
-        response = stub.SayHello(helloword_pb2.HelloRequest(name='World'))
-        print("Greeter client received: " + response.message)
+        stub = Algorithm_pb2_grc.AlgorithmStub(channel)
+        response = stub.Echo(Algorithm_pb2.InputMsg(input='World'))
+        print("Greeter client received: " + response.output)
 
 
 if __name__ == '__main__':
