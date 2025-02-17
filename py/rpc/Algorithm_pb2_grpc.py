@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import Algorithm_pb2 as Algorithm__pb2
+from rpc import Algorithm_pb2 as rpc_dot_Algorithm__pb2
 
 
 class AlgorithmStub(object):
@@ -16,8 +16,8 @@ class AlgorithmStub(object):
         """
         self.Echo = channel.unary_unary(
                 '/com.treevalue.soundRobot.rpc.Algorithm/Echo',
-                request_serializer=Algorithm__pb2.InputMsg.SerializeToString,
-                response_deserializer=Algorithm__pb2.EchoMsg.FromString,
+                request_serializer=rpc_dot_Algorithm__pb2.InputMsg.SerializeToString,
+                response_deserializer=rpc_dot_Algorithm__pb2.EchoMsg.FromString,
                 )
 
 
@@ -35,8 +35,8 @@ def add_AlgorithmServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Echo': grpc.unary_unary_rpc_method_handler(
                     servicer.Echo,
-                    request_deserializer=Algorithm__pb2.InputMsg.FromString,
-                    response_serializer=Algorithm__pb2.EchoMsg.SerializeToString,
+                    request_deserializer=rpc_dot_Algorithm__pb2.InputMsg.FromString,
+                    response_serializer=rpc_dot_Algorithm__pb2.EchoMsg.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -60,7 +60,7 @@ class Algorithm(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/com.treevalue.soundRobot.rpc.Algorithm/Echo',
-            Algorithm__pb2.InputMsg.SerializeToString,
-            Algorithm__pb2.EchoMsg.FromString,
+            rpc_dot_Algorithm__pb2.InputMsg.SerializeToString,
+            rpc_dot_Algorithm__pb2.EchoMsg.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
