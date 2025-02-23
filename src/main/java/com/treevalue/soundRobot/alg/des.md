@@ -20,8 +20,13 @@ Tensors, identified quantities, stored
 Inference machine
 Search machine
 Automata machine
-Reduction Machine
+Reduc
+ion Machine
 
 recognizer -> marked model and sort store use delete time mark aix->
 reference -> recognize mode, -> task pool ->1, translator 2.reference cache
--> auto machine -> task pool -> search machine 
+-> auto machine -> task pool -> search machine
+
+在我们的身体中住着四个小人：1 求解器 2 自动机 3 小脑 4 生殖机.
+自动机维持着当前的存在。小脑维护着这个身体的行为。求解器进行复杂求解。
+生殖机更新着这个躯体的状态。从生长到消亡。

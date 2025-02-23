@@ -1,5 +1,6 @@
 package com.treevalue.soundRobot.rpc
 
+import io.grpc.ManagedChannelBuilder
 import io.grpc.Server
 import io.grpc.ServerBuilder
 import org.junit.jupiter.api.AfterEach
@@ -8,7 +9,18 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.TimeUnit
 
+import io.grpc.stub.StreamObserver
+
+
 class GrpcTest {
+
+    class AlgorithmServer : AlgorithmGrpc.AlgorithmImplBase() {
+        override fun echo(request: InputMsg, responseObserver: StreamObserver<OutputMsg>) {
+            val reply = OutputMsg.newBuilder().setMessage("Echo: ${request.message}").build()
+            responseObserver.onNext(reply)
+            responseObserver.onCompleted()
+        }
+    }
 
     private lateinit var server: Server
     private lateinit var channel: io.grpc.ManagedChannel
@@ -22,7 +34,7 @@ class GrpcTest {
             .build()
             .start()
         println("Server started, listening on 50051")
-        channel = io.grpc.ManagedChannelBuilder.forAddress("localhost", 50051)
+        channel = ManagedChannelBuilder.forAddress("localhost", 50051)
             .usePlaintext()
             .build()
         stub = AlgorithmGrpc.newBlockingStub(channel)
