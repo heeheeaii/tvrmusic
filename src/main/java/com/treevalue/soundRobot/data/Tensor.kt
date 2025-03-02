@@ -1,7 +1,6 @@
 package com.treevalue.soundRobot.data
 
 import ai.djl.ndarray.NDArray
-import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 
 open class Tensor<T> : Iterator<T> {
