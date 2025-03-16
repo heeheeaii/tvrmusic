@@ -2,7 +2,7 @@ import ai.djl.ModelException
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDManager
 import ai.djl.translate.TranslateException
-import com.treevalue.soundRobot.hard.Machine
+import com.treevalue.atsor.hard.Machine
 import java.io.IOException
 
 object ImageToTensor {

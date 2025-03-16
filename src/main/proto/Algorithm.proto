@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 option java_multiple_files = true;
-package com.treevalue.soundRobot.rpc;
+package com.treevalue.atsor.rpc;
 
 service Algorithm {
   rpc Echo(InputMsg) returns (OutputMsg) {}
