@@ -1,13 +1,13 @@
 package com.treevalue.atsor.alg
 
-import com.treevalue.atsor.TVRMusicApplication
+import com.treevalue.atsor.TVRAtsorApplication
 import com.treevalue.atsor.hard.MusicMatch
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 @Component
 class Alg(val musicMatch: MusicMatch) {
-    private val logger = LoggerFactory.getLogger(TVRMusicApplication::class.java)
+    private val logger = LoggerFactory.getLogger(TVRAtsorApplication::class.java)
 
     fun getMusicUrl(stableV: Float): String {
         var url: String = GetInnerMusicUrl(stableV)

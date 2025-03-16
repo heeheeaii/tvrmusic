@@ -3,7 +3,6 @@ from concurrent import futures
 
 from rpc import Algorithm_pb2_grpc, Algorithm_pb2
 
-
 class AlgorithmImpl(Algorithm_pb2_grpc.Algorithm):
     def Echo(self, request, context):
         return Algorithm_pb2.EchoMsg(output='ecoh: ' + request.input)

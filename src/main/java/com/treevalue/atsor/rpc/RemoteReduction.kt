@@ -10,8 +10,8 @@ import org.springframework.web.reactive.function.client.WebClient
 class RemoteReduction {
     companion object {
         @Value("\${py.uri}")
-        private lateinit var pyUri: String
-        private val client: WebClient = WebClient.builder().baseUrl(pyUri).build()
+        private lateinit var pyUri: String // todo
+        private val client: WebClient = WebClient.builder().baseUrl("http://127.0.0.1:12000").build()
     }
 
     fun getNearbyTensor(int: NDArray): NDArray? {

@@ -1,13 +1,13 @@
 package com.treevalue.atsor.lowentrybody.sensoryMachine
 
-import com.treevalue.atsor.TVRMusicApplication
+import com.treevalue.atsor.TVRAtsorApplication
 import com.treevalue.atsor.lowentrybody.statemachine.State
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 
 @Component
 class Sensory(private val stateMachine: State) {
-    private val logger = LoggerFactory.getLogger(TVRMusicApplication::class.java)
+    private val logger = LoggerFactory.getLogger(TVRAtsorApplication::class.java)
     operator fun get(vararg idxs: Int): Float {
         return stateMachine.get(*idxs)
     }

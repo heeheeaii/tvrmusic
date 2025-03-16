@@ -1,10 +1,9 @@
 package com.treevalue.atsor.taskpoll
 
-import ai.djl.ndarray.NDArray
+import com.treevalue.atsor.data.Tensor
 
-data class Task(val from: NDArray, val to: NDArray) {
+data class Task(val from: Tensor, val to: Tensor) {
     fun onSolve() {
-
     }
 
     fun onDiscard() {

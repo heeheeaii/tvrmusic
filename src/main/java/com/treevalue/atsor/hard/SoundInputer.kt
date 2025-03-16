@@ -9,10 +9,10 @@ import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 
 class SoundInputer(val musicPath: String) : TensorInputer {
-    private lateinit var inputor: TensorI
+    private lateinit var inputor: TensorGeneI
     lateinit var audioOperator: TensorAudio
     private var nameList: MutableList<String> = mutableListOf()
-    private var tensor: TensorI? = null
+    private var tensor: TensorGeneI? = null
     private var counter: Int = 0
 
     init {
@@ -25,7 +25,7 @@ class SoundInputer(val musicPath: String) : TensorInputer {
             while (counter < nameList.size) {
                 val currentFileName = nameList[counter]
                 if (isMp3End(currentFileName)) {
-                    tensor = TensorI(audioOperator.audioToTensor("$musicPath/$currentFileName"))
+                    tensor = TensorGeneI(audioOperator.audioToTensor("$musicPath/$currentFileName"))
                     break
                 } else {
                     counter++
@@ -46,7 +46,7 @@ class SoundInputer(val musicPath: String) : TensorInputer {
     }
 
 
-    override fun getTensor(): TensorI {
+    override fun getTensor(): TensorGeneI {
         if (tensor == null) {
             var hasCycle = false
             var preCounter = counter - 1
@@ -54,7 +54,7 @@ class SoundInputer(val musicPath: String) : TensorInputer {
                 if (isWavEnd(nameList[counter])) {
                     val tensorTmp = audioOperator.audioToTensor("$musicPath/${nameList[counter]}")
                     counter++
-                    return TensorI(tensorTmp)
+                    return TensorGeneI(tensorTmp)
                 } else {
                     nameList.removeAt(counter) // Use removeAt for MutableList
                     if (hasCycle && counter == preCounter) {
@@ -72,7 +72,7 @@ class SoundInputer(val musicPath: String) : TensorInputer {
             }
             if (tensor == null && nameList.isNotEmpty()) {
                 counter = 0
-                return TensorI(audioOperator.audioToTensor("$musicPath/${nameList[0]}"))
+                return TensorGeneI(audioOperator.audioToTensor("$musicPath/${nameList[0]}"))
             }
 
         }

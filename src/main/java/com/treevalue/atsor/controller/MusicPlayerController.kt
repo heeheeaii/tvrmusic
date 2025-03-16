@@ -1,6 +1,6 @@
 package com.treevalue.atsor.controller
 
-import com.treevalue.atsor.TVRMusicApplication
+import com.treevalue.atsor.TVRAtsorApplication
 import com.treevalue.atsor.alg.Alg
 import com.treevalue.atsor.lowentrybody.sensoryMachine.Sensory
 import org.slf4j.LoggerFactory
@@ -16,7 +16,7 @@ import java.util.*
 @Controller
 class MusicPlayerController @Autowired constructor(private val sensory: Sensory, private val alg: Alg) {
 
-    private val logger = LoggerFactory.getLogger(TVRMusicApplication::class.java)
+    private val logger = LoggerFactory.getLogger(TVRAtsorApplication::class.java)
 
     @GetMapping("/")
     fun musicPlayer(model: Model): String {

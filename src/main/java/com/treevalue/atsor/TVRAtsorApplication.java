@@ -13,12 +13,12 @@ import org.springframework.context.annotation.Bean;
  */
 
 @SpringBootApplication
-public class TVRMusicApplication {
-    private static final Logger logger = LoggerFactory.getLogger(TVRMusicApplication.class);
+public class TVRAtsorApplication {
+    private static final Logger logger = LoggerFactory.getLogger(TVRAtsorApplication.class);
 
     private final Alg alg;
 
-    public TVRMusicApplication(Alg alg) {this.alg = alg;}
+    public TVRAtsorApplication(Alg alg) {this.alg = alg;}
 
     @Bean
     CommandLineRunner runner() {
@@ -26,6 +26,6 @@ public class TVRMusicApplication {
     }
 
     public static void main(String[] args) {
-        SpringApplication.run(TVRMusicApplication.class, args);
+        SpringApplication.run(TVRAtsorApplication.class, args);
     }
 }
