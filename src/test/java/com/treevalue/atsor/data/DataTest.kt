@@ -5,11 +5,23 @@ import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import com.treevalue.atsor.data.simple.FixedSizeQueue
+import com.treevalue.atsor.data.simple.PriorityQueue
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
 
 class DataTest {
+    @Test
+    fun pQueue() {
+        val p = PriorityQueue<Int>()
+        p.push(5, 3)
+        p.push(4, 4)
+        p.push(3, 6)
+        Assertions.assertEquals(p.poll().priority, 3)
+        Assertions.assertEquals(p.poll().priority, 4)
+        Assertions.assertEquals(p.poll().priority, 5)
+    }
+
     @Test
     fun tTest() {
         val manager = NDManager.newBaseManager()

@@ -7,6 +7,5 @@ data class Task(val from: Tensor, val to: Tensor) {
     }
 
     fun onDiscard() {
-
     }
 }
