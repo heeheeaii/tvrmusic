@@ -33,16 +33,14 @@
         <protobuf.version>4.29.3</protobuf.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <protoc.version>3.25.5</protoc.version>
-        <lwjgl.version>3.3.3</lwjgl.version>
+        <javacpp.version>1.5.10</javacpp.version>
     </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.lwjgl</groupId>
-                <artifactId>lwjgl-bom</artifactId>
-                <version>${lwjgl.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
+                <groupId>org.bytedeco</groupId>
+                <artifactId>javacpp</artifactId>
+                <version>${javacpp.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -92,11 +90,30 @@
             <version>1.9.5-1</version>
         </dependency>
         <!--        /mp3 -> wav support -->
+
+        <!--        nd4j-->
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-native-platform</artifactId>
             <version>1.0.0-M2.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacpp</artifactId>
+            <version>1.5.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>openblas-platform</artifactId>
+            <version>0.3.26-1.5.10</version>
+        </dependency>
+        <dependency>
+            <groupId>org.nd4j</groupId>
+            <artifactId>nd4j-api</artifactId>
+            <version>1.0.0-M2.1</version>
+        </dependency>
+        <!--        //nd4j-->
+
         <!--        djl-->
         <dependency>
             <groupId>ai.djl.pytorch</groupId>
@@ -177,36 +194,6 @@
             <groupId>javax.annotation</groupId>
             <artifactId>javax.annotation-api</artifactId>
             <version>1.3.2</version>
-        </dependency>
-        <!-- LWJGL OpenCL -->
-        <dependency>
-            <groupId>org.lwjgl</groupId>
-            <artifactId>lwjgl</artifactId>
-            <classifier>natives-windows</classifier>
-            <!--            auto load platform bin-->
-            <!--            <classifier>natives-linux</classifier>-->
-            <!--            <classifier>natives-macos</classifier>-->
-            <version>${lwjgl.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.lwjgl</groupId>
-            <artifactId>lwjgl-opencl</artifactId>
-            <version>${lwjgl.version}</version>
-        </dependency>
-        <!-- 针对Linux平台的配置 -->
-        <dependency>
-            <groupId>org.lwjgl</groupId>
-            <artifactId>lwjgl</artifactId>
-            <version>${lwjgl.version}</version>
-            <classifier>natives-linux</classifier>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.lwjgl</groupId>
-            <artifactId>lwjgl</artifactId>
-            <version>${lwjgl.version}</version>
-            <classifier>natives-macos</classifier>
-            <scope>runtime</scope>
         </dependency>
     </dependencies>
 
