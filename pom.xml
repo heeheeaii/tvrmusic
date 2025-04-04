@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.example</groupId>
-    <artifactId>tvAtsor</artifactId>
+    <artifactId>SRNN</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>demo2</name>
     <description>demo2</description>
@@ -33,7 +33,19 @@
         <protobuf.version>4.29.3</protobuf.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <protoc.version>3.25.5</protoc.version>
+        <lwjgl.version>3.3.3</lwjgl.version>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.lwjgl</groupId>
+                <artifactId>lwjgl-bom</artifactId>
+                <version>${lwjgl.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.knowm.xchart</groupId>
@@ -145,7 +157,6 @@
             <version>6.1.1-1.5.10</version>
         </dependency>
         <!--        /sound fft -->
-
         <!-- gRPC -->
         <dependency>
             <groupId>io.grpc</groupId>
@@ -167,7 +178,36 @@
             <artifactId>javax.annotation-api</artifactId>
             <version>1.3.2</version>
         </dependency>
-
+        <!-- LWJGL OpenCL -->
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl</artifactId>
+            <classifier>natives-windows</classifier>
+            <!--            auto load platform bin-->
+            <!--            <classifier>natives-linux</classifier>-->
+            <!--            <classifier>natives-macos</classifier>-->
+            <version>${lwjgl.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl-opencl</artifactId>
+            <version>${lwjgl.version}</version>
+        </dependency>
+        <!-- 针对Linux平台的配置 -->
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl</artifactId>
+            <version>${lwjgl.version}</version>
+            <classifier>natives-linux</classifier>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.lwjgl</groupId>
+            <artifactId>lwjgl</artifactId>
+            <version>${lwjgl.version}</version>
+            <classifier>natives-macos</classifier>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
 
     <build>
