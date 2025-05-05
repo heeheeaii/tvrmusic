@@ -113,7 +113,11 @@
             <version>1.0.0-M2.1</version>
         </dependency>
         <!--        //nd4j-->
-
+        <dependency>
+            <groupId>com.lmax</groupId>
+            <artifactId>disruptor</artifactId>
+            <version>4.0.0</version>
+        </dependency>
         <!--        djl-->
         <dependency>
             <groupId>ai.djl.pytorch</groupId>
