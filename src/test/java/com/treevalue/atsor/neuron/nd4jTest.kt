@@ -2,7 +2,6 @@ import org.nd4j.linalg.api.buffer.DataType
 import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration
 import org.nd4j.linalg.api.memory.enums.AllocationPolicy
 import org.nd4j.linalg.api.memory.enums.LearningPolicy
-import org.nd4j.linalg.api.memory.enums.MirroringPolicy
 import org.nd4j.linalg.api.memory.enums.SpillPolicy
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
