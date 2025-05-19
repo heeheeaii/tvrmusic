@@ -1,3 +1,5 @@
+package com.treevalue.atsor.io;
+
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
