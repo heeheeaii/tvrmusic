@@ -68,4 +68,22 @@ class AStarPathfinderTest {
         assertNull(result, "由于起点层级不小于终点，路径应为 null")
         pathfinder.printPathResult(result, start, goal)
     }
+
+    @Test
+    fun `test case 5 - assign connections at the In and out layer`() {
+        val inputs = listOf(
+            AStarPathfinder.Point(0, 0, 0), AStarPathfinder.Point(0, 30, 70), AStarPathfinder.Point(0, 99, 50)
+        )
+        val outputs = listOf(
+            AStarPathfinder.Point(1, 99, 0),
+            AStarPathfinder.Point(1, 20, 80),
+            AStarPathfinder.Point(1, 10, 10),
+            AStarPathfinder.Point(1, 60, 99)
+        )
+        val (edges, cost) = pathfinder.minCostEdgeCover(inputs, outputs, rows, cols)
+        println("Edge count = ${edges.size}, total cost = $cost")
+        edges.forEach { (i, j) ->
+            println("Input[$i] (${inputs[i]})  ->  Output[$j] (${outputs[j]})")
+        }
+    }
 }
