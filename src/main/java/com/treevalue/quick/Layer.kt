@@ -18,7 +18,7 @@ import kotlin.math.pow
  * @property defaultGrowthFactor The default factor by which the layer tries to expand its half-side length (e.g., 1.5 means 1.5x). Defaults to 1.5f.
  * @property eventHandler The EventHandler instance used by newly created neurons.
  */
-class Layer(
+open class Layer(
     initialHalfSideLength: Float = 10.0f,
     val maxHalfSideLength: Float = 50f,
 //    val maxHalfSideLength: Float = Float.POSITIVE_INFINITY,
@@ -65,7 +65,6 @@ class Layer(
     private val expansionLock = ReentrantLock()
     private val growthFactors = listOf(defaultGrowthFactor, 1.4f, 1.3f, 1.2f, 1.1f)
 
-
     private val timeCounter = AtomicReference(0f)
 
     /** Gets the next unique sequence number for events/memories within this layer. */
@@ -94,6 +93,36 @@ class Layer(
         return if (isWithinBounds(position, currentBounds)) {
             neurons[position]
         } else {
+            null
+        }
+    }
+
+    /**
+     * Creates and places a new neuron at a specific position, connecting it to a source.
+     * This method is called by the GrowthManager ONLY when a growth event is complete.
+     *
+     * @param position The target position for the new neuron.
+     * @param sourceNeuron The neuron that initiated the growth.
+     * @return The newly created Neuron, or null if a neuron already exists there.
+     */
+    fun connectNeuronTo(sourceNeuron: Neuron, position: Position): Neuron? {
+        val currentBounds = currentHalfSideLength.get()
+        if (!isWithinBounds(position, currentBounds)) {
+            return null
+        }
+
+        val newNeuron = Neuron(coordinate = position, eventHandler = eventHandler, layer = this)
+        val existingNeuron = neurons.putIfAbsent(position, newNeuron)
+
+        return if (existingNeuron == null) {
+            sourceNeuron.connect(newNeuron.coordinate)
+
+            if (needsExpansion()) {
+                tryExpand()
+            }
+            newNeuron
+        } else {
+            sourceNeuron.connect(existingNeuron.coordinate)
             null
         }
     }
@@ -180,8 +209,4 @@ class Layer(
     override fun toString(): String {
         return "Layer(currentHalfSide=${currentHalfSideLength.get()}, maxHalfSide=$maxHalfSideLength, neuronCount=${neurons.size}, sequence=${timeCounter.get()})"
     }
-}
-
-fun main() {
-    Layer.getInstance().getCurTimeSeq()
 }

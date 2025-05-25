@@ -1,20 +1,19 @@
-package com.treevalue.atsor.data
+package com.treevalue.quick.data
 
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.ops.transforms.Transforms
-import java.util.LinkedList
+import java.util.*
 
-// TensorMatrix 代表一个二维张量矩阵
-typealias TensorMatrix = Array<Array<INDArray>>
+typealias LayerMemory = Array<Array<INDArray>>
 
-class TensorMatrixStore(
+class LayerMemoryStore(
     // 单个张量之间被认为是相似的阈值
     private val tensorSimilarityThreshold: Double = 0.99,
     // 两个矩阵之间被认为是相似的阈值
     private val matrixSimilarityThreshold: Double = 0.95
 ) {
     // 使用 LinkedList 存储矩阵，方便在头部进行添加和删除操作，实现MRU（Most Recently Used）特性
-    private val storedMatrices: LinkedList<TensorMatrix> = LinkedList()
+    private val storedMatrices: LinkedList<LayerMemory> = LinkedList()
 
     /**
      * 函数：比较两个一维张量是否相似。
@@ -35,7 +34,7 @@ class TensorMatrixStore(
         return euclidean < threshold
     }
 
-    private fun areMatricesSimilar(m1: TensorMatrix, m2: TensorMatrix): Boolean {
+    private fun areMatricesSimilar(m1: LayerMemory, m2: LayerMemory): Boolean {
         val rows1 = m1.size
         val cols1 = if (rows1 > 0) m1[0].size else 0
 
@@ -82,9 +81,9 @@ class TensorMatrixStore(
      * @return 如果找到，则返回存储中的相似矩阵（现位于前端）；
      *         否则返回新添加的矩阵本身（也位于前端）。
      */
-    fun findAndPromoteOrAdd(newMatrix: TensorMatrix): TensorMatrix {
+    fun findAndPromoteOrAdd(newMatrix: LayerMemory): LayerMemory {
         val iterator = storedMatrices.iterator()
-        var foundMatrix: TensorMatrix? = null
+        var foundMatrix: LayerMemory? = null
 
         while (iterator.hasNext()) {
             val currentMatrix = iterator.next()
@@ -108,7 +107,7 @@ class TensorMatrixStore(
      * 获取存储的矩阵列表，按最近使用顺序列出。
      * @return 包含所有存储矩阵的列表副本
      */
-    fun getAllMatrices(): List<TensorMatrix> {
+    fun getAllMatrices(): List<LayerMemory> {
         return storedMatrices.toList()
     }
 

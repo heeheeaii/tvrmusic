@@ -150,7 +150,6 @@ class Neuron(
         return (exp(-timeElapsed / (reinforcement * msToSec)) + translation).coerceIn(0.0f, 1.0f)
     }
 
-
     fun getMemoryCount(): Int = memories.size
 
     override fun toString(): String {

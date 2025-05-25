@@ -1,20 +1,22 @@
 package com.treevalue.atsor.data
 
+import com.treevalue.quick.data.LayerMemory
+import com.treevalue.quick.data.LayerMemoryStore
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
 
-class TensorMatrixStoreTest {
+class LayerMemoryStoreTest {
 
-    private lateinit var store: TensorMatrixStore
+    private lateinit var store: LayerMemoryStore
 
     private fun createTensor(vararg values: Double): INDArray {
         return Nd4j.create(values)
     }
 
-    private fun createMatrix(rows: Int, cols: Int, valueOffset: Double = 0.0): TensorMatrix {
+    private fun createMatrix(rows: Int, cols: Int, valueOffset: Double = 0.0): LayerMemory {
         return Array(rows) { r ->
             Array(cols) { c ->
                 createTensor((r * cols + c + 1 + valueOffset), (r * cols + c + 2 + valueOffset))
@@ -24,7 +26,7 @@ class TensorMatrixStoreTest {
 
     @BeforeEach
     fun setup() {
-        store = TensorMatrixStore(tensorSimilarityThreshold = 0.99, matrixSimilarityThreshold = 0.95)
+        store = LayerMemoryStore(tensorSimilarityThreshold = 0.99, matrixSimilarityThreshold = 0.95)
     }
 
     @Test
@@ -104,8 +106,8 @@ class TensorMatrixStoreTest {
 
     @Test
     fun `test empty matrix handling`() {
-        val emptyMatrix1: TensorMatrix = emptyArray()
-        val emptyMatrix2: TensorMatrix = emptyArray()
+        val emptyMatrix1: LayerMemory = emptyArray()
+        val emptyMatrix2: LayerMemory = emptyArray()
         store.findAndPromoteOrAdd(emptyMatrix1)
         assertEquals(1, store.size())
         assertArrayEquals(emptyMatrix1, store.getAllMatrices().first())
@@ -117,8 +119,8 @@ class TensorMatrixStoreTest {
 
     @Test
     fun `test zero rows and zero cols matrices are not similar`() {
-        val zeroRowsMatrix: TensorMatrix = Array(0) { Array(2) { createTensor(1.0) } }
-        val zeroColsMatrix: TensorMatrix = Array(2) { Array(0) { createTensor(1.0) } }
+        val zeroRowsMatrix: LayerMemory = Array(0) { Array(2) { createTensor(1.0) } }
+        val zeroColsMatrix: LayerMemory = Array(2) { Array(0) { createTensor(1.0) } }
         store.findAndPromoteOrAdd(zeroRowsMatrix)
         assertEquals(1, store.size())
         assertArrayEquals(zeroRowsMatrix, store.getAllMatrices().first())
