@@ -98,7 +98,7 @@ fun mergeFilesInDirectory(sourceDirectoryPath: String, outputFileName: String = 
 
 fun main(args: Array<String>) {
     val sourceDirectoryPath: String
-    if (!args.isEmpty()) {
+    if (args.isNotEmpty()) {
         sourceDirectoryPath = args[0]
     } else {
         sourceDirectoryPath = "D:\\agi\\tvrmusicnew\\src\\main\\java\\com\\treevalue\\quick"

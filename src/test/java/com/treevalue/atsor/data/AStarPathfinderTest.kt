@@ -80,7 +80,7 @@ class AStarPathfinderTest {
             AStarPathfinder.Point(1, 10, 10),
             AStarPathfinder.Point(1, 60, 99)
         )
-        val (edges, cost) = pathfinder.minCostEdgeCover(inputs, outputs, rows, cols)
+        val (edges, cost) = pathfinder.matchPointsByMinCost(inputs, outputs, rows, cols)
         println("Edge count = ${edges.size}, total cost = $cost")
         edges.forEach { (i, j) ->
             println("Input[$i] (${inputs[i]})  ->  Output[$j] (${outputs[j]})")

@@ -11,7 +11,6 @@ class Tensor(val data: FloatArray, val shape: LongArray) {
             return manager.create(tensor.data, Shape(*tensor.shape))
         }
 
-
         fun fromNDArray(ndArray: NDArray): Tensor {
             val floatData = ndArray.toFloatArray()
             val longShape = ndArray.shape.shape

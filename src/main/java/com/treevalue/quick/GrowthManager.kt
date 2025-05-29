@@ -19,7 +19,7 @@ class GrowthManager private constructor(
 
         fun getInstance(): GrowthManager = instance ?: synchronized(this) {
             instance ?: GrowthManager(
-                AStarPathfinder(numLayers = 5, numRows = 32, numCols = 32)
+                AStarPathfinder(numLayers = 5, numRow = 32, numCol = 32)
             ).also { instance = it }
         }
     }
@@ -48,13 +48,12 @@ class GrowthManager private constructor(
             return
         }
 
-        val startPt = positionToPoint(sourceNeuron.coordinate)
-        val goalPt = positionToPoint(targetPosition)
+        val startPt = sourceNeuron.coordinate
+        val goalPt = targetPosition
 
         // Find path using A* and convert points to positions
         val path = pathfinder.findPath(startPt, goalPt)?.first
             ?.drop(1) // Drop the starting point as we already have the source neuron
-            ?.map(::pointToPosition)
             ?: return
 
         if (path.isEmpty()) return
@@ -110,16 +109,6 @@ class GrowthManager private constructor(
             if (proc != null) enqueueNextGrowthProcess(proc)
         }
     }
-
-    private fun positionToPoint(pos: Position): AStarPathfinder.Point =
-        AStarPathfinder.Point(
-            layer = pos.z.toInt(),
-            row = pos.y.toInt(),
-            col = pos.x.toInt()
-        )
-
-    private fun pointToPosition(pt: AStarPathfinder.Point): Position =
-        Position(x = pt.col.toFloat(), y = pt.row.toFloat(), z = pt.layer.toFloat())
 
     private fun enqueueNextGrowthProcess(process: NeuronsGrowthProcess) {
         if (process.isComplete()) return

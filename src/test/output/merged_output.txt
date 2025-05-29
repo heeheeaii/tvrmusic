@@ -1,0 +1,1439 @@
+import java.util.PriorityQueue
+import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.sqrt
+
+class AStarPathfinder( // A* 算法 Admissible Optimal
+    private val numLayers: Int, // 总层数
+    private val numRows: Int,   // 每层的行数
+    private val numCols: Int    // 每层的列数
+) {
+    data class Point(val layer: Int, val row: Int, val col: Int) {
+        fun distTo(o: Point): Double = hypot(
+            hypot((layer - o.layer).toDouble(), (row - o.row).toDouble()),
+            (col - o.col).toDouble()
+        )
+
+        override fun toString() = "P(L$layer, R$row, C$col)"
+    }
+
+    /** 检查点坐标是否在 [0, w) × [0, h) 范围内 */
+    private fun checkBounds(pts: List<Point>, w: Int, h: Int, label: String) {
+        pts.forEachIndexed { i, p ->
+            require(p.row in 0 until w && p.col in 0 until h) {
+                "$label[$i] 超出网格范围：$p 不在 0‥${w - 1} × 0‥${h - 1}"
+            }
+        }
+    }
+
+    // 匈牙利算法（O(n³) 方阵版本）
+    private fun hungarian(cost: Array<DoubleArray>): IntArray {
+        val n = cost.size
+        val u = DoubleArray(n + 1)
+        val v = DoubleArray(n + 1)
+        val p = IntArray(n + 1)
+        val way = IntArray(n + 1)
+
+        for (i in 1..n) {
+            p[0] = i
+            var j0 = 0
+            val minv = DoubleArray(n + 1) { Double.POSITIVE_INFINITY }
+            val used = BooleanArray(n + 1)
+            do {
+                used[j0] = true
+                val i0 = p[j0]
+                var delta = Double.POSITIVE_INFINITY
+                var j1 = 0
+                for (j in 1..n) if (!used[j]) {
+                    val cur = cost[i0 - 1][j - 1] - u[i0] - v[j]
+                    if (cur < minv[j]) {
+                        minv[j] = cur; way[j] = j0
+                    }
+                    if (minv[j] < delta) {
+                        delta = minv[j]; j1 = j
+                    }
+                }
+                for (j in 0..n) {
+                    if (used[j]) {
+                        u[p[j]] += delta; v[j] -= delta
+                    } else {
+                        minv[j] -= delta
+                    }
+                }
+                j0 = j1
+            } while (p[j0] != 0)
+
+            do {
+                val j1 = way[j0]
+                p[j0] = p[j1]
+                j0 = j1
+            } while (j0 != 0)
+        }
+
+        val match = IntArray(n) { -1 }          // 行 → 列
+        for (j in 1..n) if (p[j] != 0) match[p[j] - 1] = j - 1
+        return match
+    }
+
+    /**
+     * @return  Pair(边列表, 总代价)
+     *         边列表元素为 Pair<输入索引, 输出索引>
+     */
+    fun minCostEdgeCover(
+        inputs: List<Point>, outputs: List<Point>, gridW: Int, gridH: Int
+    ): Pair<List<Pair<Int, Int>>, Double> {
+
+        // ----------- 边界检查 -----------
+        checkBounds(inputs, gridW, gridH, "Input")
+        checkBounds(outputs, gridW, gridH, "Output")
+
+        val m = inputs.size
+        val n = outputs.size
+        val size = max(m, n)            // 方阵维度
+        val BIG = 1e9                   // 虚点代价
+
+        // ----------- 构造 padded 成本矩阵 -----------
+        val cost = Array(size) { DoubleArray(size) { BIG } }
+        for (i in 0 until m) for (j in 0 until n) cost[i][j] = inputs[i].distTo(outputs[j])
+
+        // ----------- 匹配 + 生成最小边覆盖 -----------
+        val match = hungarian(cost)
+        val edges = mutableListOf<Pair<Int, Int>>()
+        val coveredIn = BooleanArray(m)
+        val coveredOut = BooleanArray(n)
+        var total = 0.0
+
+        // 已匹配的边
+        for (i in 0 until m) {
+            val j = match[i]
+            if (j in 0 until n) {
+                edges += i to j
+                coveredIn[i] = true
+                coveredOut[j] = true
+                total += cost[i][j]
+            }
+        }
+        // 补足未覆盖输入
+        for (i in 0 until m) if (!coveredIn[i]) {
+            var bestJ = 0;
+            var bestC = Double.POSITIVE_INFINITY
+            for (j in 0 until n) if (cost[i][j] < bestC) {
+                bestC = cost[i][j]; bestJ = j
+            }
+            edges += i to bestJ
+            coveredOut[bestJ] = true
+            total += bestC
+        }
+        // 补足未覆盖输出
+        for (j in 0 until n) if (!coveredOut[j]) {
+            var bestI = 0;
+            var bestC = Double.POSITIVE_INFINITY
+            for (i in 0 until m) if (cost[i][j] < bestC) {
+                bestC = cost[i][j]; bestI = i
+            }
+            edges += bestI to j
+            total += bestC
+        }
+        return edges to total
+    }
+
+    /**
+     * 启发函数 (h)：估计从点 p1 到点 p2 的成本 (三维欧几里得距离)
+     */
+    private fun heuristic(p1: Point, p2: Point): Double {
+        val dLayer = (p1.layer - p2.layer).toDouble()
+        val dRow = (p1.row - p2.row).toDouble()
+        val dCol = (p1.col - p2.col).toDouble()
+        return sqrt(dLayer * dLayer + dRow * dRow + dCol * dCol)
+    }
+
+    /**
+     * 代价函数 (cost)：计算从 p1 到相邻下一层 p2 的实际连接成本
+     */
+    private fun cost(p1: Point, p2: Point): Double {
+        // 确保 p1 和 p2 在相邻层
+        if (p2.layer - p1.layer != 1) {
+            return Double.POSITIVE_INFINITY // 不应该发生，因为 getNeighbors 只会生成下一层的邻居
+        }
+        val dRow = (p1.row - p2.row).toDouble()
+        val dCol = (p1.col - p2.col).toDouble()
+        return sqrt(1.0 + dRow * dRow + dCol * dCol) // (p2.layer - p1.layer)^2 == 1^2 == 1.0
+    }
+
+    /**
+     * 获取一个点的所有有效邻居 (即下一层的所有点)
+     */
+    private fun getNeighbors(point: Point): List<Point> {
+        val neighbors = mutableListOf<Point>()
+        if (point.layer < numLayers - 1) { // 如果不是最后一层
+            val nextLayer = point.layer + 1
+            for (r in 0 until numRows) {
+                for (c in 0 until numCols) {
+                    neighbors.add(Point(nextLayer, r, c))
+                }
+            }
+        }
+        return neighbors
+    }
+
+    /**
+     * 从 cameFrom 映射中重建路径
+     */
+    private fun reconstructPath(cameFrom: Map<Point, Point>, current: Point): List<Point> {
+        val totalPath = mutableListOf(current)
+        var tempCurrent = current
+        while (cameFrom.containsKey(tempCurrent)) {
+            tempCurrent = cameFrom[tempCurrent]!!
+            totalPath.add(0, tempCurrent) // 添加到路径的开头
+        }
+        return totalPath
+    }
+
+    /**
+     * A* 寻路算法主体
+     * @param start 起点
+     * @param goal 目标点
+     * @return Pair(路径列表, 总成本)? 如果找到路径则返回路径和成本，否则返回 null
+     */
+    fun findPath(start: Point, goal: Point): Pair<List<Point>, Double>? {
+        // 基本校验
+        if (start == goal) {
+            return Pair(listOf(start), 0.0)
+        }
+        if (start.layer >= numLayers || goal.layer >= numLayers || start.row >= numRows || goal.row >= numRows || start.col >= numCols || goal.col >= numCols || start.layer < 0 || goal.layer < 0 || start.row < 0 || goal.row < 0 || start.col < 0 || goal.col < 0) {
+            println("错误：起点或终点坐标超出边界。")
+            return null
+        }
+        if (start.layer >= goal.layer) {
+            println("错误：起点层级必须小于终点层级。($start -> $goal)")
+            return null
+        }
+
+        val closedSet = mutableSetOf<Point>() // 已评估过的节点集合
+        val cameFrom = mutableMapOf<Point, Point>() // 记录路径
+
+        // gScore: 从起点到某点的实际最低成本
+        val gScore = mutableMapOf<Point, Double>().withDefault { Double.POSITIVE_INFINITY }
+        gScore[start] = 0.0
+
+        // fScore: gScore + heuristic (预估总成本)
+        // PriorityQueue 按 fScore 对节点排序
+        val fScore = mutableMapOf<Point, Double>().withDefault { Double.POSITIVE_INFINITY }
+        fScore[start] = heuristic(start, goal)
+
+        val openSet = PriorityQueue<Point>(compareBy { fScore.getValue(it) })
+        openSet.add(start)
+
+        while (openSet.isNotEmpty()) {
+            val current = openSet.poll()!! // 取出 fScore 最低的节点
+
+            if (current == goal) {
+                val path = reconstructPath(cameFrom, current)
+                return Pair(path, gScore.getValue(goal)) // 找到路径，返回路径和成本
+            }
+
+            closedSet.add(current)
+
+            for (neighbor in getNeighbors(current)) {
+                if (neighbor in closedSet) {
+                    continue // 忽略已评估过的邻居
+                }
+
+                // 计算通过 current 到达 neighbor 的 gScore
+                val tentativeGScore = gScore.getValue(current) + cost(current, neighbor)
+
+                if (tentativeGScore < gScore.getValue(neighbor)) {
+                    // 这条路径更优
+                    cameFrom[neighbor] = current
+                    gScore[neighbor] = tentativeGScore
+                    fScore[neighbor] = tentativeGScore + heuristic(neighbor, goal)
+
+                    if (neighbor !in openSet) {
+                        openSet.add(neighbor)
+                    } else {
+                        // 如果邻居已在 openSet 中，需要更新其优先级
+                        // 标准 PriorityQueue 没有高效的 decrease-key 操作
+                        // 先移除再添加可以达到效果 (对于小图，性能影响可接受)
+                        openSet.remove(neighbor) // O(N)
+                        openSet.add(neighbor)    // O(log N)
+                    }
+                }
+            }
+        }
+        return null // 未找到路径
+    }
+
+    fun printPathResult(
+        result: Pair<List<AStarPathfinder.Point>, Double>?, start: AStarPathfinder.Point, goal: AStarPathfinder.Point
+    ) {
+        if (result != null) {
+            val (path, cost) = result
+            println("路径已找到 (从 $start 到 $goal):")
+            path.forEachIndexed { index, point ->
+                print("  $point")
+                if (index < path.size - 1) print(" ->")
+                println()
+            }
+            println("总欧几里得距离 (成本): ${String.format("%.4f", cost)}")
+        } else {
+            println("未能找到从 $start 到 $goal 的路径。")
+        }
+    }
+}
+
+--- 合并自: AStarPathfinder.kt ---
+
+package com.treevalue.quick
+
+
+/**
+ * A listener interface to receive notifications when a new neural connection is successfully formed.
+ */
+fun interface ConnectionListener {
+    /**
+     * Called when a connection is established between two neurons after a growth segment completes.
+     *
+     * @param from The source neuron of the connection.
+     * @param to The newly created target neuron.
+     */
+    fun onConnect(from: Neuron, to: Neuron)
+}
+
+--- 合并自: ConnectionListener.kt ---
+
+package com.treevalue.quick
+
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.exp
+
+class EventHandler {
+    private val decayRate = 0.1f
+
+    companion object {
+        private var instance: EventHandler? = null
+
+        fun getInstance(): EventHandler {
+            if (instance == null) {
+                synchronized(this) {
+                    if (instance == null) {
+                        instance = EventHandler()
+                    }
+                }
+            }
+            return instance!!
+        }
+    }
+
+    private val eventQueue = ConcurrentLinkedQueue<SignalEvent>()
+    private val processingExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "EventHandlerThread").apply { isDaemon = true }
+    }
+    private val isRunning = AtomicBoolean(false)
+
+    fun submitEvent(event: SignalEvent) {
+        eventQueue.offer(event)
+    }
+
+    fun startProcessing() {
+        if (isRunning.compareAndSet(false, true)) {
+            processingExecutor.submit {
+                while (isRunning.get() && !Thread.currentThread().isInterrupted) {
+                    processBatch()
+                    if (eventQueue.isEmpty()) {
+                        try {
+                            Thread.sleep(0, 100_000)
+                        } catch (ie: InterruptedException) {
+                            Thread.currentThread().interrupt()
+                            break
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    private fun processBatch() {
+        var processedCount = 0
+        val batchSize = 500
+
+        while (processedCount < batchSize) {
+            val event = eventQueue.poll() ?: break
+
+            try {
+                processSingleEvent(event)
+                processedCount++
+            } catch (e: Exception) {
+                try {
+                    event.signal.close()
+                } catch (closeE: Exception) { /* Ignore closing error */
+                }
+            }
+        }
+    }
+
+
+    private fun calculateDecayFactor(distance: Float): Float {
+        val nonNegativeDistance = if (distance < 0f) 0f else distance
+        return exp(-decayRate * nonNegativeDistance)
+    }
+
+    private fun processSingleEvent(event: SignalEvent) {
+        val targetNeuron = event.targetNeuron
+        val decayFactor = calculateDecayFactor(event.distance)
+        try {
+            val originalStrength = event.signal.getFloat(SIGNAL_EXCITATORY_IDX)
+            event.signal.putScalar(
+                intArrayOf(0, SIGNAL_EXCITATORY_IDX),
+                originalStrength * decayFactor
+            )
+            targetNeuron.receive(event)
+        } finally {
+            event.signal.close()
+        }
+    }
+
+
+    fun stopProcessing() {
+        isRunning.set(false)
+        processingExecutor.shutdown()
+        try {
+            if (!processingExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                processingExecutor.shutdownNow()
+            }
+        } catch (ie: InterruptedException) {
+            processingExecutor.shutdownNow()
+            Thread.currentThread().interrupt()
+        }
+        var cleanedCount = 0
+        while (true) {
+            val event = eventQueue.poll() ?: break
+            try {
+                event.signal.close()
+            } catch (e: Exception) {/* ignore */
+            }
+            cleanedCount++
+        }
+    }
+}
+
+--- 合并自: EventHandler.kt ---
+
+package com.treevalue.quick
+
+import AStarPathfinder
+import java.util.UUID
+import java.util.concurrent.*
+
+/**
+ * CORRECTED: This is the main growth management class, renamed from NeuronGrowthEvent.
+ * It orchestrates neuron growth based on A* paths and a clock tick.
+ */
+class GrowthManager private constructor(
+    private val pathfinder: AStarPathfinder,
+    tickIntervalMs: Long = 50L,
+    private val transform: Transform = Transform.getInstance(),
+) {
+    companion object {
+        @Volatile
+        private var instance: GrowthManager? = null
+
+        fun getInstance(): GrowthManager = instance ?: synchronized(this) {
+            instance ?: GrowthManager(
+                AStarPathfinder(numLayers = 5, numRows = 32, numCols = 32)
+            ).also { instance = it }
+        }
+    }
+
+    // CORRECTION: State collections now use the correct types and names.
+    private val activeMiddleGrowth = ConcurrentLinkedQueue<MiddleGrowthEvent>()
+    private val pendingNextGrowthProcess = ConcurrentLinkedQueue<NeuronsGrowthProcess>()
+    private val activeGrowthProcessById = ConcurrentHashMap<UUID, NeuronsGrowthProcess>()
+    private val activeGrowthProcessByHeadTail = ConcurrentHashMap<Pair<Position, Position>, NeuronsGrowthProcess>()
+    private val activeMiddleGrowthById = ConcurrentHashMap<UUID, MiddleGrowthEvent>()
+
+    private val growthExecutor: ScheduledExecutorService =
+        Executors.newSingleThreadScheduledExecutor { r ->
+            Thread(r, "GrowthManagerThread").apply { isDaemon = true }
+        }
+
+    init {
+        growthExecutor.scheduleAtFixedRate(::processGrowthTick, 0L, tickIntervalMs, TimeUnit.MILLISECONDS)
+    }
+
+    fun requestGrowth(sourceNeuron: Neuron, targetPosition: Position) {
+        val requestKey = sourceNeuron.coordinate to targetPosition
+
+        activeGrowthProcessByHeadTail[requestKey]?.let { existingProcess ->
+            activeMiddleGrowthById[existingProcess.id]?.reinforce()
+            return
+        }
+
+        val startPt = positionToPoint(sourceNeuron.coordinate)
+        val goalPt = positionToPoint(targetPosition)
+
+        // Find path using A* and convert points to positions
+        val path = pathfinder.findPath(startPt, goalPt)?.first
+            ?.drop(1) // Drop the starting point as we already have the source neuron
+            ?.map(::pointToPosition)
+            ?: return
+
+        if (path.isEmpty()) return
+
+        val newProcess = NeuronsGrowthProcess(fullPath = path, initialNeuronPosition = sourceNeuron.coordinate)
+        activeGrowthProcessById[newProcess.id] = newProcess
+        activeGrowthProcessByHeadTail[requestKey] = newProcess
+
+        enqueueNextGrowthProcess(newProcess)
+    }
+
+    fun stop() {
+        growthExecutor.shutdownNow()
+        activeMiddleGrowth.clear()
+        pendingNextGrowthProcess.clear()
+        activeGrowthProcessById.clear()
+        activeGrowthProcessByHeadTail.clear()
+        activeMiddleGrowthById.clear()
+    }
+
+    private fun processGrowthTick() {
+        val numberToProcess = activeMiddleGrowth.size
+        for (i in 0 until numberToProcess) {
+            val seg = activeMiddleGrowth.poll() ?: continue
+
+            if (seg.advanceThenArrive()) {
+                activeMiddleGrowthById.remove(seg.parentProcessId)
+
+                transform.getNeuron(seg.sourcePosition)?.let { src ->
+                    transform.connectNeuronTo(src, seg.targetPosition)
+                }
+
+                val proc = activeGrowthProcessById[seg.parentProcessId]
+                proc?.advanceToNext()
+
+                if (proc != null) {
+                    if (!proc.isComplete()) {
+                        pendingNextGrowthProcess.offer(proc)
+                    } else {
+                        val reqHeadTail = proc.initialNeuronPosition to proc.fullPath.last()
+                        activeGrowthProcessByHeadTail.remove(reqHeadTail)
+                        activeGrowthProcessById.remove(proc.id)
+                    }
+                }
+            } else {
+                activeMiddleGrowth.offer(seg)
+            }
+        }
+
+        // Enqueue the next segments for all paths that have advanced.
+        while (pendingNextGrowthProcess.isNotEmpty()) {
+            val proc = pendingNextGrowthProcess.poll()
+            if (proc != null) enqueueNextGrowthProcess(proc)
+        }
+    }
+
+    private fun positionToPoint(pos: Position): AStarPathfinder.Point =
+        AStarPathfinder.Point(
+            layer = pos.z.toInt(),
+            row = pos.y.toInt(),
+            col = pos.x.toInt()
+        )
+
+    private fun pointToPosition(pt: AStarPathfinder.Point): Position =
+        Position(x = pt.col.toFloat(), y = pt.row.toFloat(), z = pt.layer.toFloat())
+
+    private fun enqueueNextGrowthProcess(process: NeuronsGrowthProcess) {
+        if (process.isComplete()) return
+
+        val src = process.getNextPositionStart()
+        val tgt = process.getNextPositionTarget()
+
+        val seg = MiddleGrowthEvent(process.id, src, tgt)
+
+        activeMiddleGrowthById[process.id] = seg
+        activeMiddleGrowth.offer(seg)
+    }
+}
+
+--- 合并自: GrowthManager.kt ---
+
+package com.treevalue.quick
+
+import kotlinx.coroutines.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.pow
+
+/**
+ * Represents a growing medium for neurons, managing their positions and expansion.
+ * The layer is a cube centered at (0,0,0).
+ *
+ * @property initialHalfSideLength The initial half-side length of the cubic layer boundary.
+ * @property maxHalfSideLength The maximum half-side length the layer can expand to. Use Float.POSITIVE_INFINITY for unlimited spatial growth.
+ * @property growthThreshold The occupancy threshold (fraction of maxNeuronCount) that triggers an expansion attempt. Only applies if maxNeuronCount is finite. Defaults to 0.85f.
+ * @property defaultGrowthFactor The default factor by which the layer tries to expand its half-side length (e.g., 1.5 means 1.5x). Defaults to 1.5f.
+ * @property eventHandler The EventHandler instance used by newly created neurons.
+ */
+open class Layer(
+    initialHalfSideLength: Float = 10.0f,
+    val maxHalfSideLength: Float = 50f,
+//    val maxHalfSideLength: Float = Float.POSITIVE_INFINITY,
+    val growthThreshold: Float = 0.85f,
+    private val defaultGrowthFactor: Float = 1.5f,
+    private val eventHandler: EventHandler
+) {
+    init {
+        require(initialHalfSideLength > 0) { "Initial half-side length must be positive." }
+        require(maxHalfSideLength >= initialHalfSideLength) { "Max half-side length must be >= initial half-side length." }
+        require(growthThreshold in 0.0f..1.0f) { "Growth threshold must be between 0.0 and 1.0." }
+        require(defaultGrowthFactor > 1.0f) { "Default growth factor must be greater than 1.0." }
+    }
+
+    companion object {
+        private var instance: Layer? = null
+
+        fun getInstance(
+            initialHalfSideLength: Float = 10.0f,
+            maxHalfSideLength: Float = 50f,
+            growthThreshold: Float = 0.85f,
+            defaultGrowthFactor: Float = 1.5f,
+            eventHandler: EventHandler = EventHandler.getInstance()
+        ): Layer {
+            if (instance == null) {
+                synchronized(this) {
+                    if (instance == null) {
+                        instance = Layer(
+                            initialHalfSideLength,
+                            maxHalfSideLength,
+                            growthThreshold,
+                            defaultGrowthFactor,
+                            eventHandler
+                        )
+                    }
+                }
+            }
+            return instance!!
+        }
+    }
+
+    private val neurons: ConcurrentHashMap<Position, Neuron> = ConcurrentHashMap()
+    private val currentHalfSideLength: AtomicReference<Float> = AtomicReference(initialHalfSideLength)
+    private val expansionLock = ReentrantLock()
+    private val growthFactors = listOf(defaultGrowthFactor, 1.4f, 1.3f, 1.2f, 1.1f)
+
+    private val timeCounter = AtomicReference(0f)
+
+    /** Gets the next unique sequence number for events/memories within this layer. */
+    fun timeNext() {
+        while (true) {
+            val curSeq = timeCounter.get()
+            val newValue = curSeq + 1
+            if (timeCounter.compareAndSet(curSeq, newValue)) {
+                break
+            }
+        }
+    }
+
+    /** Gets the current global sequence number without incrementing. */
+    fun getCurTimeSeq(): Float {
+        return timeCounter.get()
+    }
+
+    fun has(position: Position): Boolean {
+        val currentBounds = currentHalfSideLength.get()
+        return isWithinBounds(position, currentBounds) && neurons.containsKey(position)
+    }
+
+    fun getNeuron(position: Position): Neuron? {
+        val currentBounds = currentHalfSideLength.get()
+        return if (isWithinBounds(position, currentBounds)) {
+            neurons[position]
+        } else {
+            null
+        }
+    }
+
+    /**
+     * Creates and places a new neuron at a specific position, connecting it to a source.
+     * This method is called by the GrowthManager ONLY when a growth event is complete.
+     *
+     * @param position The target position for the new neuron.
+     * @param sourceNeuron The neuron that initiated the growth.
+     * @return The newly created Neuron, or null if a neuron already exists there.
+     */
+    fun connectNeuronTo(sourceNeuron: Neuron, position: Position): Neuron? {
+        val currentBounds = currentHalfSideLength.get()
+        if (!isWithinBounds(position, currentBounds)) {
+            return null
+        }
+
+        val newNeuron = Neuron(coordinate = position, eventHandler = eventHandler, layer = this)
+        val existingNeuron = neurons.putIfAbsent(position, newNeuron)
+
+        return if (existingNeuron == null) {
+            sourceNeuron.connect(newNeuron.coordinate)
+
+            if (needsExpansion()) {
+                tryExpand()
+            }
+            newNeuron
+        } else {
+            sourceNeuron.connect(existingNeuron.coordinate)
+            null
+        }
+    }
+
+    /**
+     * @param position The target position for the new neuron.
+     * @param sourceNeuron Optional: The neuron initiating the growth (used to establish initial connections).
+     * @return The newly created Neuron if growth was successful, null otherwise.
+     */
+    fun grow(position: Position, sourceNeuron: Neuron? = null): Neuron? {
+        val currentBounds = currentHalfSideLength.get()
+        if (!isWithinBounds(position, currentBounds)) {
+            return null
+        }
+        val newNeuron = Neuron(coordinate = position, eventHandler = eventHandler, layer = this)
+        val existingNeuron = neurons.putIfAbsent(position, newNeuron)
+        if (existingNeuron == null) {
+            sourceNeuron?.connect(newNeuron.coordinate)
+            if (needsExpansion()) {
+                tryExpand()
+            }
+            return newNeuron
+        } else {
+            return null
+        }
+    }
+
+    fun getNeuronCount(): Int = neurons.size
+
+    fun getCurrentHalfSideLength(): Float = currentHalfSideLength.get()
+    fun getAllNeurons(): Collection<Neuron> = neurons.values.toList()
+    private fun isWithinBounds(position: Position, halfSide: Float): Boolean {
+        return abs(position.x) <= halfSide &&
+                abs(position.y) <= halfSide &&
+                abs(position.z) <= halfSide
+    }
+
+    private fun needsExpansion(): Boolean {
+        val currentSize = neurons.size
+        val maxNeuronCount = maxHalfSideLength.toDouble().pow(3.0).toFloat()
+        val thresholdCount = (growthThreshold * maxNeuronCount).toLong()
+        val currentBounds = currentHalfSideLength.get()
+        val canGrowSpatially = currentBounds < maxHalfSideLength
+        return currentSize >= thresholdCount && canGrowSpatially
+    }
+
+    private fun tryExpand(): Boolean {
+        if (!expansionLock.tryLock()) {
+            return false
+        }
+        try {
+            if (!needsExpansion()) {
+                return false
+            }
+            val currentBounds = currentHalfSideLength.get()
+            var expansionSuccessful = false
+            for (factor in growthFactors) {
+                val potentialNewHalfSide = currentBounds * factor
+                val targetHalfSide = min(potentialNewHalfSide, maxHalfSideLength)
+                if (targetHalfSide > currentBounds) {
+                    if (currentHalfSideLength.compareAndSet(currentBounds, targetHalfSide)) {
+                        println("Layer expanded from $currentBounds to $targetHalfSide (Factor: $factor).")
+                        expansionSuccessful = true
+                        break
+                    } else {
+                        System.err.println("WARN: Layer expansion CAS failed. Current bounds changed concurrently.")
+                        expansionSuccessful = false
+                        break
+                    }
+                } else {
+                }
+            }
+            if (!expansionSuccessful && currentBounds < maxHalfSideLength) {
+                println("Layer expansion failed to find suitable factor or CAS failed. Current bounds: $currentBounds")
+            } else if (!expansionSuccessful && currentBounds >= maxHalfSideLength) {
+                println("Layer expansion not possible: Already at maximum spatial bounds ($maxHalfSideLength).")
+            }
+            return expansionSuccessful
+        } finally {
+            expansionLock.unlock()
+        }
+    }
+
+    override fun toString(): String {
+        return "Layer(currentHalfSide=${currentHalfSideLength.get()}, maxHalfSide=$maxHalfSideLength, neuronCount=${neurons.size}, sequence=${timeCounter.get()})"
+    }
+}
+
+--- 合并自: Layer.kt ---
+
+package com.treevalue.quick
+
+import org.nd4j.linalg.api.ndarray.INDArray
+
+data class Memory(
+    val output: MutableMap<Position, INDArray>,
+    var reinforcementCount: Int = 0
+) {
+    var updateTime: Float = 0f
+    var isLongTerm: Boolean = false
+    var isFixed: Boolean = false
+
+    fun rememberLonRemember() {
+        isLongTerm = true
+    }
+
+    fun rememberForever() {
+        isFixed = true
+    }
+
+    override fun toString(): String {
+        return "Memory(outputs=${output.size}, longTerm=$isLongTerm, reinforced=$reinforcementCount, fixed=$isFixed)"
+    }
+}
+
+--- 合并自: Memory.kt ---
+
+package com.treevalue.quick
+
+import java.util.UUID
+import kotlin.math.exp
+
+/**
+ * CORRECTED: Represents the growth of a single, continuous segment between two points.
+ * Renamed from NeuronGrowthEvent to avoid conflict with the manager class.
+ */
+data class MiddleGrowthEvent(
+    val parentProcessId: UUID,
+    val sourcePosition: Position,
+    val targetPosition: Position
+) {
+    private val totalDistance: Float = Position.distanceOf(sourcePosition, targetPosition)
+    private var progress: Float = 0f
+    private var reinforcementCount: Int = 1
+    private var speed: Float = calculateSpeed()
+
+    fun reinforce() {
+        reinforcementCount++
+        speed = calculateSpeed()
+    }
+
+    private fun calculateSpeed(): Float {
+        val baseSpeed = 1.0f
+        val maxTotalSpeed = 10.0f
+        val maxBonusSpeed = maxTotalSpeed - baseSpeed
+        val k = 0.5f
+        val r0 = 10.0f
+        val multi = 1.5f
+        val logisticBonus = maxBonusSpeed / (1 + exp(-k * (multi * reinforcementCount - r0)))
+        return baseSpeed + logisticBonus
+    }
+
+    fun advanceThenArrive(): Boolean {
+        progress += speed
+        return progress >= totalDistance
+    }
+}
+
+--- 合并自: MiddleGrowthEvent.kt ---
+
+package com.treevalue.quick
+
+import MemoryList
+import com.treevalue.atsor.data.RangedKeyDataStore
+import kotlin.random.Random
+import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.factory.Nd4j
+import java.util.concurrent.*
+import kotlin.math.exp
+
+class Neuron(
+    val coordinate: Position, private val eventHandler: EventHandler, private val layer: Layer = Layer.getInstance()
+) {
+
+    private val connects: ConcurrentHashMap<Position, Float> = ConcurrentHashMap()
+    private val inSignals = RangedKeyDataStore.of<Float, INDArray>(25f) // 25 ms
+    private val memories = MemoryList()
+    private val shortTermMemoryTranslation: Float = 0f
+    private val longTermMemoryTranslation: Float = 0.5f
+    private val fixedMemoryThreshold: Int = 20
+    private val longTermMemoryThreshold: Int = 3
+
+    fun connect(position: Position) {
+        if (position != coordinate) {
+            val distance = Position.distanceOf(this.coordinate, position)
+            connects[position] = distance
+        }
+    }
+
+    /**
+     * @param distance logic distance, of neron spacial distance in coordination
+     * @param k decay factor, default 0.001
+     */
+    private fun signalDecay(strength: INDArray, distance: Float, k: Float = 0.001f) {
+        val decayFactor = exp(-k * distance.toDouble())
+        strength.muli(decayFactor)
+    }
+
+
+    fun receive(event: SignalEvent) {
+        signalDecay(event.signal, Position.distanceOf(event.sourceNeuron.coordinate, coordinate))
+        inSignals.put(event.timeSeq, event.signal)
+    }
+
+    fun processReceivedSignals(timeSequence: Float) {
+        val signalsToProcess = inSignals.getAllAndClear(timeSequence)
+        if (signalsToProcess.isEmpty()) {
+            return
+        }
+        val sumSignal: INDArray = Nd4j.create(SIGNAL_LENGTH)
+        signalsToProcess.forEach {
+            sumSignal.addi(it)
+        }
+        if (sumSignal.getFloat(SIGNAL_EXCITATORY_IDX) > ACTIVE_THRESHOLD) {
+            active(timeSequence, sumSignal)
+        }
+    }
+
+    private fun active(modelKey: Float, triggeringSignal: INDArray) {
+        val timeSeq = layer.getCurTimeSeq()
+        val outgoingSignalBase = triggeringSignal.dup()
+
+        val outputMap: MutableMap<Position, INDArray> = ConcurrentHashMap()
+        connects.forEach { (position, distance) ->
+            val signalToSend = outgoingSignalBase.dup()
+            signalDecay(signalToSend, distance, 0.001f)
+            outputMap[position] = signalToSend
+        }
+
+        outputMap.forEach { (position, signal) ->
+            val targetNeuron = layer.getNeuron(position)
+            targetNeuron?.let {
+                val event = SignalEvent(
+                    sourceNeuron = this,
+                    targetNeuron = it,
+                    signal = signal,
+                    distance = connects[position]!!,
+                    timeSeq = timeSeq
+                )
+                eventHandler.submitEvent(event)
+            }
+        }
+
+        memories.putToHead(
+            modelKey, Memory(
+                output = outputMap.toMutableMap(),
+                reinforcementCount = 0,
+            )
+        )
+        memories.first()?.let {
+            trySolidifyMemory(it)
+        }
+    }
+
+    private fun trySolidifyMemory(memory: Memory?) {
+        memory?.let {
+            if (it.isFixed) {
+                return
+            }
+            it.reinforcementCount++
+            if (!it.isLongTerm && it.reinforcementCount >= longTermMemoryThreshold) {
+                it.rememberLonRemember()
+            } else if (it.isLongTerm && !it.isFixed && it.reinforcementCount >= fixedMemoryThreshold) {
+                it.rememberForever()
+            }
+        }
+    }
+
+    /**
+     * Ebbinghaus-inspired forgetting mechanism.
+     * Iterates through memories and removes some based on calculated retention probability.
+     */
+    private fun naturalForget() {
+        val curTimeSeq: Float = layer.getCurTimeSeq()
+        if (memories.isEmpty()) return
+        var forgottenCount = 0
+        val forgetModelKey = mutableListOf<Float>()
+        for ((modelKey, memory) in memories) {
+            if (memory.isFixed) {
+                continue
+            }
+            val timeElapsed = curTimeSeq - modelKey
+            if (timeElapsed <= 0) {
+                continue
+            }
+            val translation = if (memory.isLongTerm) longTermMemoryTranslation else shortTermMemoryTranslation
+            val retention = calculateRetention(timeElapsed, memory.reinforcementCount, translation)
+            val forgetProbability = 1.0f - retention
+            if (Random.nextFloat() < forgetProbability) {
+                forgetModelKey.add(modelKey)
+            }
+        }
+
+        forgetModelKey.forEach {
+            memories.remove(it)
+        }
+    }
+
+    /**
+     * Calculates memory retention based on Ebbinghaus-like formula.
+     * R = exp(-(timeElapsed + translation) / Strength)
+     * Strength increases with reinforcement.
+     * @param timeElapsed ms
+     *  @param translation 平移
+     */
+    private fun calculateRetention(timeElapsed: Float, reinforcement: Int, translation: Float): Float {
+        if (reinforcement <= 0f) return 0f
+        if (timeElapsed <= 0f) return 1f
+        val msToSec = 1000
+        return (exp(-timeElapsed / (reinforcement * msToSec)) + translation).coerceIn(0.0f, 1.0f)
+    }
+
+    fun getMemoryCount(): Int = memories.size
+
+    override fun toString(): String {
+
+        val connectionCount = connects.size
+        return "Neuron(coordinate=$coordinate, connections=$connectionCount, memories=${memories.size})"
+    }
+
+}
+
+--- 合并自: Neuron.kt ---
+
+package com.treevalue.quick
+
+import AStarPathfinder
+import java.util.UUID
+import java.util.concurrent.*
+
+/**
+ * Represents the growth of a single, continuous segment between two points.
+ */
+class NeuronGrowthEvent private constructor(
+    private val pathfinder: AStarPathfinder,
+    tickIntervalMs: Long = 50L,
+    private val transform: Transform = Transform.getInstance(),
+) {
+    companion object {
+        @Volatile
+        private var instance: NeuronGrowthEvent? = null
+
+        fun getInstance(numLayers: Int = 5, numRows: Int = 32, numCols: Int = 32): NeuronGrowthEvent =
+            instance ?: synchronized(this) {
+                instance ?: NeuronGrowthEvent(
+                    AStarPathfinder(numLayers, numRows, numCols)
+                ).also { instance = it }
+            }
+    }
+
+    private val activeSegments = ConcurrentLinkedQueue<MiddleGrowthEvent>()
+    private val pendingNextSegment = ConcurrentLinkedQueue<NeuronsGrowthProcess>()
+    private val activePathsById = ConcurrentHashMap<UUID, NeuronsGrowthProcess>()
+    private val activePathByRequest = ConcurrentHashMap<Pair<Position, Position>, NeuronsGrowthProcess>()
+    private val activeSegmentByProcId = ConcurrentHashMap<UUID, MiddleGrowthEvent>()
+
+    private val growthExecutor: ScheduledExecutorService =
+        Executors.newSingleThreadScheduledExecutor { r ->
+            Thread(r, "NeuronGrowthEventThread").apply { isDaemon = true }
+        }
+
+    init {
+        growthExecutor.scheduleAtFixedRate(::processGrowthTick, 0L, tickIntervalMs, TimeUnit.MILLISECONDS)
+    }
+
+    private fun processGrowthTick() {
+        var seg = activeSegments.poll()
+        while (seg != null) {
+            val arrived = seg.advanceThenArrive()
+
+            if (arrived) {
+                activeSegmentByProcId.remove(seg.parentProcessId)
+
+                transform.getNeuron(seg.sourcePosition)?.let { src ->
+                    transform.connectNeuronTo(src, seg.targetPosition)
+                }
+
+                val proc = activePathsById[seg.parentProcessId]
+                proc?.advanceToNext()
+
+                if (proc != null && !proc.isComplete()) {
+                    pendingNextSegment.offer(proc)
+                } else if (proc != null && proc.isComplete()) {
+                    val requestKey = proc.initialNeuronPosition to proc.fullPath.last()
+                    activePathByRequest.remove(requestKey)
+                    activePathsById.remove(proc.id)
+                }
+            } else {
+                activeSegments.offer(seg)
+            }
+            seg = activeSegments.poll()
+        }
+
+        var proc = pendingNextSegment.poll()
+        while (proc != null) {
+            enqueueNextSegment(proc)
+            proc = pendingNextSegment.poll()
+        }
+    }
+
+    private fun enqueueNextSegment(process: NeuronsGrowthProcess) {
+        if (process.isComplete()) return
+
+        val src = process.getNextPositionStart()
+        val tgt = process.getNextPositionTarget()
+        val seg = MiddleGrowthEvent(process.id, src, tgt)
+
+        activeSegmentByProcId[process.id] = seg
+        activeSegments.offer(seg)
+    }
+}
+
+--- 合并自: NeuronGrowthEvent.kt ---
+
+package com.treevalue.quick
+
+import java.util.UUID
+
+/**
+ * Manages the state of an entire multi-segment growth path from an initial source to a final target.
+ */
+internal data class NeuronsGrowthProcess(
+    val id: UUID = UUID.randomUUID(),
+    val fullPath: List<Position>,
+    val initialNeuronPosition: Position
+) {
+    private var currentPathIndex: Int = 0
+
+    fun isComplete(): Boolean = currentPathIndex >= fullPath.size
+
+    fun getNextPositionStart(): Position {
+        return if (currentPathIndex == 0) {
+            initialNeuronPosition
+        } else {
+            fullPath[currentPathIndex - 1]
+        }
+    }
+
+    fun getNextPositionTarget(): Position = fullPath[currentPathIndex]
+
+    fun advanceToNext() {
+        if (!isComplete()) {
+            currentPathIndex++
+        }
+    }
+}
+
+--- 合并自: NeuronsGrowthProcess.kt ---
+
+package com.treevalue.quick
+
+import java.io.Serializable
+import kotlin.math.sqrt
+
+data class Position(val x: Float, val y: Float, val z: Float) : Serializable {
+    companion object {
+        fun distanceOf(from: Position, other: Position): Float {
+            val dx = from.x - other.x
+            val dy = from.y - other.y
+            val dz = from.z - other.z
+            return sqrt(dx * dx + dy * dy + dz * dz)
+        }
+    }
+}
+
+--- 合并自: Position.kt ---
+
+package com.treevalue.quick
+
+import com.treevalue.atsor.hard.TensorManager
+import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.factory.Nd4j
+
+class Runner {
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            val transform = Transform.getInstance()
+            val feeling:INDArray = Nd4j.create(10)
+            transform.input(feeling)
+//            transform.active()
+//            GrowthManager.getInstance().requestGrowth()
+        }
+    }
+}
+
+--- 合并自: Runner.kt ---
+
+package com.treevalue.quick
+
+import org.nd4j.linalg.api.ndarray.INDArray
+
+const val SIGNAL_EXCITATORY_IDX = 0
+const val SIGNAL_REWARD_IDX = 1
+const val SIGNAL_LENGTH = 5
+
+const val ACTIVE_THRESHOLD = 0.8f
+
+/**
+ * Represents a signal transmission event. Uses Neuron object references.
+ */
+data class SignalEvent(
+    val sourceNeuron: Neuron,
+    val targetNeuron: Neuron,
+    val signal: INDArray,
+    val distance: Float,
+    val timeSeq: Float
+) {
+}
+
+--- 合并自: SignalEvent.kt ---
+
+package com.treevalue.quick
+
+import com.treevalue.quick.layer.*
+import org.nd4j.linalg.api.ndarray.INDArray
+
+class Transform {
+    private val eventHandler: EventHandler = EventHandler.getInstance()
+    private val feelingLayer: FeelingLayer = FeelingLayer(eventHandler = eventHandler)
+    private val shallowLayer: ShallowLayer = ShallowLayer(eventHandler = eventHandler)
+    private val deepLayer: DeepLayer = DeepLayer(eventHandler = eventHandler)
+    private val outputLayer: OutputLayer = OutputLayer(eventHandler = eventHandler)
+    private val feedbackLayer: FeedbackLayer = FeedbackLayer(eventHandler = eventHandler)
+    private val layerMap: Map<Int, Layer> = mapOf(
+        0 to feelingLayer,
+        1 to shallowLayer,
+        2 to deepLayer,
+        3 to outputLayer,
+        4 to feedbackLayer
+    )
+
+    init {
+        eventHandler.startProcessing()
+    }
+
+    fun input(feeling: INDArray) {
+        feelingLayer.input(feeling)
+    }
+
+    fun connectNeuronTo(sourceNeuron: Neuron, targetPosition: Position): Neuron? {
+        val layerIndex = targetPosition.z.toInt()
+        return layerMap[layerIndex]?.connectNeuronTo(sourceNeuron, targetPosition)
+    }
+
+    fun getNeuron(position: Position): Neuron? {
+        val layerIndex = position.z.toInt()
+        return layerMap[layerIndex]?.getNeuron(position)
+    }
+
+    companion object {
+        @Volatile
+        private var instance: Transform? = null
+        fun getInstance(): Transform = instance ?: synchronized(this) {
+            instance ?: Transform().also { instance = it }
+        }
+    }
+}
+
+--- 合并自: Transform.kt ---
+
+package com.treevalue.quick.data
+
+import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.ops.transforms.Transforms
+import java.util.*
+
+typealias LayerMemory = Array<Array<INDArray>>
+
+class LayerMemoryStore(
+    // 单个张量之间被认为是相似的阈值
+    private val tensorSimilarityThreshold: Double = 0.99,
+    // 两个矩阵之间被认为是相似的阈值
+    private val matrixSimilarityThreshold: Double = 0.95
+) {
+    // 使用 LinkedList 存储矩阵，方便在头部进行添加和删除操作，实现MRU（Most Recently Used）特性
+    private val storedMatrices: LinkedList<LayerMemory> = LinkedList()
+
+    /**
+     * 函数：比较两个一维张量是否相似。
+     * 这是一个可定制的部分；实际实现取决于对张量“相似性”的定义。
+     * @param t1 第一个张量
+     * @param t2 第二个张量
+     * @return 如果张量相似则返回 true，否则返回 false
+     */
+    private fun areTensorsSimilar(t1: INDArray, t2: INDArray): Boolean {
+        if (!t1.shape().contentEquals(t2.shape())) {
+            return false
+        }
+        // return t1.equals(t2) // 精确匹配
+        // return t1.equalsWithEps(t2, 1e-5) // 考虑浮点数误差的近似匹配
+        val euclidean = Transforms.euclideanDistance(t1, t2)
+        val maxLength = maxOf(t1.norm2Number().toDouble(), t2.norm2Number().toDouble())
+        val threshold = maxLength * (1 - tensorSimilarityThreshold)
+        return euclidean < threshold
+    }
+
+    private fun areMatricesSimilar(m1: LayerMemory, m2: LayerMemory): Boolean {
+        val rows1 = m1.size
+        val cols1 = if (rows1 > 0) m1[0].size else 0
+
+        val rows2 = m2.size
+        val cols2 = if (rows2 > 0) m2[0].size else 0
+
+        if (rows1 != rows2 || cols1 != cols2) {
+            return false
+        }
+
+        val rows = rows1
+        val cols = cols1
+
+        if (rows == 0 || cols == 0) {
+            return true
+        }
+
+        val totalTensors = rows * cols
+        var similarTensorCount = 0
+
+        for (i in 0 until rows) {
+            // 假设 m1 和 m2 都是规范的矩形矩阵
+            // 为防止不规则数组（jagged array）导致错误，可以添加检查
+            if (m1[i].size != cols || m2[i].size != cols) {
+                // 检测到不规则数组，这通常不符合矩阵的定义，视为结构不相似
+                System.err.println("Warning: Irregular arrays are encountered when matrix comparison.")
+                return false
+            }
+            for (j in 0 until cols) {
+                if (areTensorsSimilar(m1[i][j], m2[i][j])) {
+                    similarTensorCount++
+                }
+            }
+        }
+        return (similarTensorCount.toDouble() / totalTensors) >= matrixSimilarityThreshold
+    }
+
+    /**
+     * 检查给定矩阵是否与任何已存储的矩阵相似。
+     * 如果找到相似的，则将该已存储的矩阵移动到列表前端（最近使用）。
+     * 如果未找到，则将新矩阵添加到列表前端。
+     *
+     * @param newMatrix 要检查并可能添加的矩阵。
+     * @return 如果找到，则返回存储中的相似矩阵（现位于前端）；
+     *         否则返回新添加的矩阵本身（也位于前端）。
+     */
+    fun findAndPromoteOrAdd(newMatrix: LayerMemory): LayerMemory {
+        val iterator = storedMatrices.iterator()
+        var foundMatrix: LayerMemory? = null
+
+        while (iterator.hasNext()) {
+            val currentMatrix = iterator.next()
+            if (areMatricesSimilar(currentMatrix, newMatrix)) {
+                foundMatrix = currentMatrix
+                iterator.remove()
+                break
+            }
+        }
+
+        return if (foundMatrix != null) {
+            storedMatrices.offerFirst(foundMatrix)
+            foundMatrix
+        } else {
+            storedMatrices.offerFirst(newMatrix)
+            newMatrix
+        }
+    }
+
+    /**
+     * 获取存储的矩阵列表，按最近使用顺序列出。
+     * @return 包含所有存储矩阵的列表副本
+     */
+    fun getAllMatrices(): List<LayerMemory> {
+        return storedMatrices.toList()
+    }
+
+    /**
+     * 获取当前存储的大小。
+     * @return 存储中矩阵的数量
+     */
+    fun size(): Int {
+        return storedMatrices.size
+    }
+}
+
+--- 合并自: LayerMemoryStore.kt ---
+
+package com.treevalue.quick.layer
+
+import com.treevalue.quick.EventHandler
+import com.treevalue.quick.Layer
+import org.nd4j.linalg.api.ndarray.INDArray
+
+class DeepLayer(
+    private val eventHandler: EventHandler
+) : Layer(eventHandler = eventHandler) {
+    fun input(feeling: INDArray) {
+    }
+}
+
+--- 合并自: DeepLayer.kt ---
+
+package com.treevalue.quick.layer
+
+import com.treevalue.quick.EventHandler
+import com.treevalue.quick.Layer
+
+class FeedbackLayer(
+    private val eventHandler: EventHandler
+) : Layer(eventHandler = eventHandler) {
+}
+
+--- 合并自: FeedbackLayer.kt ---
+
+package com.treevalue.quick.layer
+
+import com.treevalue.quick.EventHandler
+import com.treevalue.quick.Layer
+import org.nd4j.linalg.api.ndarray.INDArray
+
+class FeelingLayer(
+    private val eventHandler: EventHandler
+) : Layer(eventHandler = eventHandler) {
+    fun input(feeling: INDArray) {
+    }
+}
+
+--- 合并自: FeelingLayer.kt ---
+
+package com.treevalue.quick.layer
+
+import com.treevalue.quick.EventHandler
+import com.treevalue.quick.Layer
+import org.nd4j.linalg.api.ndarray.INDArray
+
+class OutputLayer(
+    private val eventHandler: EventHandler
+) : Layer(eventHandler = eventHandler) {
+
+}
+
+--- 合并自: OutputLayer.kt ---
+
+package com.treevalue.quick.layer
+
+import com.treevalue.quick.EventHandler
+import com.treevalue.quick.Layer
+import org.nd4j.linalg.api.ndarray.INDArray
+
+class ShallowLayer(
+    private val eventHandler: EventHandler
+) : Layer(eventHandler = eventHandler) {
+
+}

@@ -11,20 +11,17 @@ import java.awt.FontMetrics;
 public class TextToImageGenerator {
 
     public static void main(String[] args) {
-        // 1. 检查是否提供了输入文本
         if (args.length == 0) {
             System.err.println("错误: 请提供要生成图片的文本作为参数。");
             System.err.println("用法: java TextToImageGenerator <文本内容>");
             System.exit(1);
         }
 
-        // 2. 将所有参数合并为一个字符串 (允许文本中包含空格)
         String text = String.join(" ", args);
 
-        // 3. 定义图片属性
-        int width = 800; // 图片宽度
-        int height = 200; // 图片高度
-        String outputFileName = "output.png"; // 输出图片文件名
+        int width = 800;
+        int height = 200;
+        String outputFileName = "output.png";
         Font font = new Font("SansSerif", Font.BOLD, 48); // 字体样式和大小
 
         try {

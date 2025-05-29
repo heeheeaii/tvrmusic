@@ -1,33 +1,26 @@
+import com.treevalue.quick.Point
 import java.util.PriorityQueue
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.sqrt
 
 class AStarPathfinder( // A* 算法 Admissible Optimal
-    private val numLayers: Int, // 总层数
-    private val numRows: Int,   // 每层的行数
-    private val numCols: Int    // 每层的列数
+    private val numLayers: Int = 5, // 总层数
+    private val numRow: Int = 32,   // 每层的行数
+    private val numCol: Int = 32    // 每层的列数
 ) {
-    data class Point(val layer: Int, val row: Int, val col: Int) {
-        fun distTo(o: Point): Double = hypot(
-            hypot((layer - o.layer).toDouble(), (row - o.row).toDouble()),
-            (col - o.col).toDouble()
-        )
-
-        override fun toString() = "P(L$layer, R$row, C$col)"
-    }
 
     /** 检查点坐标是否在 [0, w) × [0, h) 范围内 */
     private fun checkBounds(pts: List<Point>, w: Int, h: Int, label: String) {
         pts.forEachIndexed { i, p ->
-            require(p.row in 0 until w && p.col in 0 until h) {
+            require(p.y in 0 until w && p.x in 0 until h) {
                 "$label[$i] 超出网格范围：$p 不在 0‥${w - 1} × 0‥${h - 1}"
             }
         }
     }
 
     // 匈牙利算法（O(n³) 方阵版本）
-    private fun hungarian(cost: Array<DoubleArray>): IntArray {
+    private fun hungarian(cost: Array<FloatArray>): IntArray {
         val n = cost.size
         val u = DoubleArray(n + 1)
         val v = DoubleArray(n + 1)
@@ -79,22 +72,21 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
      * @return  Pair(边列表, 总代价)
      *         边列表元素为 Pair<输入索引, 输出索引>
      */
-    fun minCostEdgeCover(
+    fun matchPointsByMinCost(
         inputs: List<Point>, outputs: List<Point>, gridW: Int, gridH: Int
     ): Pair<List<Pair<Int, Int>>, Double> {
 
-        // ----------- 边界检查 -----------
         checkBounds(inputs, gridW, gridH, "Input")
         checkBounds(outputs, gridW, gridH, "Output")
 
         val m = inputs.size
         val n = outputs.size
         val size = max(m, n)            // 方阵维度
-        val BIG = 1e9                   // 虚点代价
+        val BIG = 1e9f                   // 虚点代价
 
         // ----------- 构造 padded 成本矩阵 -----------
-        val cost = Array(size) { DoubleArray(size) { BIG } }
-        for (i in 0 until m) for (j in 0 until n) cost[i][j] = inputs[i].distTo(outputs[j])
+        val cost = Array(size) { FloatArray(size) { BIG } }
+        for (i in 0 until m) for (j in 0 until n) cost[i][j] = inputs[i].distanceTo(outputs[j])
 
         // ----------- 匹配 + 生成最小边覆盖 -----------
         val match = hungarian(cost)
@@ -116,7 +108,7 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
         // 补足未覆盖输入
         for (i in 0 until m) if (!coveredIn[i]) {
             var bestJ = 0;
-            var bestC = Double.POSITIVE_INFINITY
+            var bestC = Float.POSITIVE_INFINITY
             for (j in 0 until n) if (cost[i][j] < bestC) {
                 bestC = cost[i][j]; bestJ = j
             }
@@ -127,7 +119,7 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
         // 补足未覆盖输出
         for (j in 0 until n) if (!coveredOut[j]) {
             var bestI = 0;
-            var bestC = Double.POSITIVE_INFINITY
+            var bestC = Float.POSITIVE_INFINITY
             for (i in 0 until m) if (cost[i][j] < bestC) {
                 bestC = cost[i][j]; bestI = i
             }
@@ -141,9 +133,9 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
      * 启发函数 (h)：估计从点 p1 到点 p2 的成本 (三维欧几里得距离)
      */
     private fun heuristic(p1: Point, p2: Point): Double {
-        val dLayer = (p1.layer - p2.layer).toDouble()
-        val dRow = (p1.row - p2.row).toDouble()
-        val dCol = (p1.col - p2.col).toDouble()
+        val dLayer = (p1.z - p2.z).toDouble()
+        val dRow = (p1.y - p2.y).toDouble()
+        val dCol = (p1.x - p2.x).toDouble()
         return sqrt(dLayer * dLayer + dRow * dRow + dCol * dCol)
     }
 
@@ -152,11 +144,11 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
      */
     private fun cost(p1: Point, p2: Point): Double {
         // 确保 p1 和 p2 在相邻层
-        if (p2.layer - p1.layer != 1) {
+        if (p2.z - p1.z != 1) {
             return Double.POSITIVE_INFINITY // 不应该发生，因为 getNeighbors 只会生成下一层的邻居
         }
-        val dRow = (p1.row - p2.row).toDouble()
-        val dCol = (p1.col - p2.col).toDouble()
+        val dRow = (p1.y - p2.y).toDouble()
+        val dCol = (p1.x - p2.x).toDouble()
         return sqrt(1.0 + dRow * dRow + dCol * dCol) // (p2.layer - p1.layer)^2 == 1^2 == 1.0
     }
 
@@ -165,10 +157,10 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
      */
     private fun getNeighbors(point: Point): List<Point> {
         val neighbors = mutableListOf<Point>()
-        if (point.layer < numLayers - 1) { // 如果不是最后一层
-            val nextLayer = point.layer + 1
-            for (r in 0 until numRows) {
-                for (c in 0 until numCols) {
+        if (point.z < numLayers - 1) { // 如果不是最后一层
+            val nextLayer = point.z + 1
+            for (r in 0 until numRow) {
+                for (c in 0 until numCol) {
                     neighbors.add(Point(nextLayer, r, c))
                 }
             }
@@ -200,11 +192,11 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
         if (start == goal) {
             return Pair(listOf(start), 0.0)
         }
-        if (start.layer >= numLayers || goal.layer >= numLayers || start.row >= numRows || goal.row >= numRows || start.col >= numCols || goal.col >= numCols || start.layer < 0 || goal.layer < 0 || start.row < 0 || goal.row < 0 || start.col < 0 || goal.col < 0) {
+        if (start.z >= numLayers || goal.z >= numLayers || start.y >= numRow || goal.y >= numRow || start.x >= numCol || goal.x >= numCol || start.z < 0 || goal.z < 0 || start.y < 0 || goal.y < 0 || start.x < 0 || goal.x < 0) {
             println("错误：起点或终点坐标超出边界。")
             return null
         }
-        if (start.layer >= goal.layer) {
+        if (start.z >= goal.z) {
             println("错误：起点层级必须小于终点层级。($start -> $goal)")
             return null
         }
@@ -264,7 +256,7 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
     }
 
     fun printPathResult(
-        result: Pair<List<AStarPathfinder.Point>, Double>?, start: AStarPathfinder.Point, goal: AStarPathfinder.Point
+        result: Pair<List<Point>, Double>?, start: Point, goal: Point
     ) {
         if (result != null) {
             val (path, cost) = result
