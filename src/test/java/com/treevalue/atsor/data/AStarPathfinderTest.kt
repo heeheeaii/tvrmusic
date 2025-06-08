@@ -1,6 +1,7 @@
 package com.treevalue.atsor.data
 
 import AStarPathfinder
+import com.treevalue.quick.Point
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
@@ -13,8 +14,8 @@ class AStarPathfinderTest {
 
     @Test
     fun `test case 1 - straight path`() {
-        val start = AStarPathfinder.Point(0, 1, 1)
-        val goal = AStarPathfinder.Point(4, 1, 1)
+        val start = Point(0, 1, 1)
+        val goal = Point(4, 1, 1)
         val result = pathfinder.findPath(start, goal)
 
         assertNotNull(result, "路径应当存在")
@@ -25,8 +26,8 @@ class AStarPathfinderTest {
 
     @Test
     fun `test case 2 - diagonal path`() {
-        val start = AStarPathfinder.Point(0, 0, 0)
-        val goal = AStarPathfinder.Point(4, 99, 99)
+        val start = Point(0, 0, 0)
+        val goal = Point(4, 99, 99)
         val result = pathfinder.findPath(start, goal)
 
         assertNotNull(result, "路径应当存在")
@@ -37,8 +38,8 @@ class AStarPathfinderTest {
 
     @Test
     fun `test case 3 - short path`() {
-        val start = AStarPathfinder.Point(0, 2, 1)
-        val goal = AStarPathfinder.Point(1, 0, 0)
+        val start = Point(0, 2, 1)
+        val goal = Point(1, 0, 0)
         val result = pathfinder.findPath(start, goal)
 
         assertNotNull(result)
@@ -49,8 +50,8 @@ class AStarPathfinderTest {
 
     @Test
     fun `test case 4 - same start and goal`() {
-        val start = AStarPathfinder.Point(2, 1, 0)
-        val goal = AStarPathfinder.Point(2, 1, 0)
+        val start = Point(2, 1, 0)
+        val goal = Point(2, 1, 0)
         val result = pathfinder.findPath(start, goal)
 
         assertNotNull(result)
@@ -61,8 +62,8 @@ class AStarPathfinderTest {
 
     @Test
     fun `test case 5 - invalid layer order`() {
-        val start = AStarPathfinder.Point(3, 0, 0)
-        val goal = AStarPathfinder.Point(1, 2, 2)
+        val start = Point(3, 0, 0)
+        val goal = Point(1, 2, 2)
         val result = pathfinder.findPath(start, goal)
 
         assertNull(result, "由于起点层级不小于终点，路径应为 null")
@@ -72,13 +73,13 @@ class AStarPathfinderTest {
     @Test
     fun `test case 5 - assign connections at the In and out layer`() {
         val inputs = listOf(
-            AStarPathfinder.Point(0, 0, 0), AStarPathfinder.Point(0, 30, 70), AStarPathfinder.Point(0, 99, 50)
+            Point(0, 0, 0), Point(0, 30, 70), Point(0, 99, 50)
         )
         val outputs = listOf(
-            AStarPathfinder.Point(1, 99, 0),
-            AStarPathfinder.Point(1, 20, 80),
-            AStarPathfinder.Point(1, 10, 10),
-            AStarPathfinder.Point(1, 60, 99)
+            Point(1, 99, 0),
+            Point(1, 20, 80),
+            Point(1, 10, 10),
+            Point(1, 60, 99)
         )
         val (edges, cost) = pathfinder.matchPointsByMinCost(inputs, outputs, rows, cols)
         println("Edge count = ${edges.size}, total cost = $cost")

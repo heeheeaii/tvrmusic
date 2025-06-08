@@ -12,7 +12,7 @@ class Runner {
             val transform = Transform.getInstance()
             val feeling:INDArray = Nd4j.create(10)
             transform.input(feeling)
-            AStarPathfinder().matchPointsByMinCost()
+//            AStarPathfinder().matchPointsByMinCost()
 //            transform.active()
 //            GrowthManager.getInstance().requestGrowth()
         }
