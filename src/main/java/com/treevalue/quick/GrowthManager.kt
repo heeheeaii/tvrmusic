@@ -5,7 +5,6 @@ import java.util.UUID
 import java.util.concurrent.*
 
 /**
- * CORRECTED: This is the main growth management class, renamed from NeuronGrowthEvent.
  * It orchestrates neuron growth based on A* paths and a clock tick.
  */
 class GrowthManager private constructor(
@@ -24,7 +23,6 @@ class GrowthManager private constructor(
         }
     }
 
-    // CORRECTION: State collections now use the correct types and names.
     private val activeMiddleGrowth = ConcurrentLinkedQueue<MiddleGrowthEvent>()
     private val pendingNextGrowthProcess = ConcurrentLinkedQueue<NeuronsGrowthProcess>()
     private val activeGrowthProcessById = ConcurrentHashMap<UUID, NeuronsGrowthProcess>()

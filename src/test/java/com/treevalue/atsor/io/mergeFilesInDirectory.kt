@@ -361,7 +361,9 @@ fun main(args: Array<String>) {
     when {
         // 从命令行参数读取多个路径
         true -> {
-            val paths = listOf<String>("D:\\code\\compose-webview-multiplatform")
+            val mkpPath = "D:\\\\code\\\\compose-webview-multiplatform"
+            val tvrPath = "D:\\agi\\tvrmusicnew\\src\\main\\java\\com\\treevalue\\quick"
+            val paths = listOf<String>(tvrPath)
             val outputPath = "D:\\agi\\tvrmusicnew\\src\\test\\output\\merged_output.txt"
 
             val config = MergeConfig(
