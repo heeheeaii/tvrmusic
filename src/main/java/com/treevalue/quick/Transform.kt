@@ -36,6 +36,14 @@ class Transform {
         return layerMap[layerIndex]?.getNeuron(position)
     }
 
+    fun except(except: INDArray) {
+        TODO("Not yet implemented")
+    }
+
+    fun predicate(input: INDArray) {
+        TODO("Not yet implemented")
+    }
+
     companion object {
         @Volatile
         private var instance: Transform? = null
