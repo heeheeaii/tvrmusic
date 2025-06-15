@@ -4,6 +4,7 @@ import java.util.UUID
 
 /**
  * Manages the state of an entire multi-segment growth path from an initial source to a final target.
+ * 从输入到输出的一次生长
  */
 internal data class NeuronsGrowthProcess(
     val id: UUID = UUID.randomUUID(),

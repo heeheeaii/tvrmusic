@@ -6,6 +6,7 @@ import java.util.concurrent.*
 
 /**
  * It orchestrates neuron growth based on A* paths and a clock tick.
+ * 外部顶层接口，接收输入层到输出层的生长请求
  */
 class GrowthManager private constructor(
     private val pathfinder: AStarPathfinder,

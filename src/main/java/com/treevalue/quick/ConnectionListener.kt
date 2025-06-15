@@ -3,6 +3,7 @@ package com.treevalue.quick
 
 /**
  * A listener interface to receive notifications when a new neural connection is successfully formed.
+ * 两个神经元之间连接成功回调
  */
 fun interface ConnectionListener {
     /**

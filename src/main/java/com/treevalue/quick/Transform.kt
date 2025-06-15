@@ -2,6 +2,7 @@ package com.treevalue.quick
 
 import com.treevalue.quick.layer.*
 import org.nd4j.linalg.api.ndarray.INDArray
+import java.util.UUID
 
 class Transform {
     private val eventHandler: EventHandler = EventHandler.getInstance()
@@ -36,11 +37,11 @@ class Transform {
         return layerMap[layerIndex]?.getNeuron(position)
     }
 
-    fun except(except: INDArray) {
+    fun except(feeling: INDArray, except: INDArray) {
         TODO("Not yet implemented")
     }
 
-    fun predicate(input: INDArray) {
+    fun predicate(input: INDArray): Pair<UUID, INDArray> {
         TODO("Not yet implemented")
     }
 

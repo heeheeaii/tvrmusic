@@ -4,8 +4,7 @@ import java.util.UUID
 import kotlin.math.exp
 
 /**
- * CORRECTED: Represents the growth of a single, continuous segment between two points.
- * Renamed from NeuronGrowthEvent to avoid conflict with the manager class.
+ * 全量生长过程中，相邻两个神经元之间的生长
  */
 data class MiddleGrowthEvent(
     val parentProcessId: UUID,
