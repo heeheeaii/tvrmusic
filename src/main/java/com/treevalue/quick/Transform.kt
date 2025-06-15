@@ -5,12 +5,12 @@ import org.nd4j.linalg.api.ndarray.INDArray
 import java.util.UUID
 
 class Transform {
-    private val eventHandler: EventHandler = EventHandler.getInstance()
-    private val feelingLayer: FeelingLayer = FeelingLayer(eventHandler = eventHandler)
-    private val shallowLayer: ShallowLayer = ShallowLayer(eventHandler = eventHandler)
-    private val deepLayer: DeepLayer = DeepLayer(eventHandler = eventHandler)
-    private val outputLayer: OutputLayer = OutputLayer(eventHandler = eventHandler)
-    private val feedbackLayer: FeedbackLayer = FeedbackLayer(eventHandler = eventHandler)
+    private val signalTransmissionManager: SignalTransmissionManager = SignalTransmissionManager.getInstance()
+    private val feelingLayer: FeelingLayer = FeelingLayer(signalTransmissionManager = signalTransmissionManager)
+    private val shallowLayer: ShallowLayer = ShallowLayer(signalTransmissionManager = signalTransmissionManager)
+    private val deepLayer: DeepLayer = DeepLayer(signalTransmissionManager = signalTransmissionManager)
+    private val outputLayer: OutputLayer = OutputLayer(signalTransmissionManager = signalTransmissionManager)
+    private val feedbackLayer: FeedbackLayer = FeedbackLayer(signalTransmissionManager = signalTransmissionManager)
     private val layerMap: Map<Int, Layer> = mapOf(
         0 to feelingLayer,
         1 to shallowLayer,
@@ -20,7 +20,7 @@ class Transform {
     )
 
     init {
-        eventHandler.startProcessing()
+        signalTransmissionManager.startProcessing()
     }
 
     fun input(feeling: INDArray) {
@@ -33,12 +33,12 @@ class Transform {
     }
 
     fun getNeuron(position: Position): Neuron? {
-        val layerIndex = position.z.toInt()
+        val layerIndex = position.z
         return layerMap[layerIndex]?.getNeuron(position)
     }
 
     fun except(feeling: INDArray, except: INDArray) {
-        TODO("Not yet implemented")
+        GrowthManager.getInstance().requestGrowth(feeling, except)
     }
 
     fun predicate(input: INDArray): Pair<UUID, INDArray> {

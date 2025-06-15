@@ -6,17 +6,20 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.exp
 
-class EventHandler {
+/**
+ * 神经元信号传播处理器
+ */
+class SignalTransmissionManager {
     private val decayRate = 0.1f
 
     companion object {
-        private var instance: EventHandler? = null
+        private var instance: SignalTransmissionManager? = null
 
-        fun getInstance(): EventHandler {
+        fun getInstance(): SignalTransmissionManager {
             if (instance == null) {
                 synchronized(this) {
                     if (instance == null) {
-                        instance = EventHandler()
+                        instance = SignalTransmissionManager()
                     }
                 }
             }

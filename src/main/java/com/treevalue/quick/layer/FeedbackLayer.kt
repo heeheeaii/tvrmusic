@@ -1,9 +1,9 @@
 package com.treevalue.quick.layer
 
-import com.treevalue.quick.EventHandler
+import com.treevalue.quick.SignalTransmissionManager
 import com.treevalue.quick.Layer
 
 class FeedbackLayer(
-    private val eventHandler: EventHandler
-) : Layer(eventHandler = eventHandler) {
+    private val signalTransmissionManager: SignalTransmissionManager
+) : Layer(signalTransmissionManager = signalTransmissionManager) {
 }

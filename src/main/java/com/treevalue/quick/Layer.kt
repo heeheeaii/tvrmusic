@@ -16,7 +16,7 @@ import kotlin.math.pow
  * @property maxHalfSideLength The maximum half-side length the layer can expand to. Use Float.POSITIVE_INFINITY for unlimited spatial growth.
  * @property growthThreshold The occupancy threshold (fraction of maxNeuronCount) that triggers an expansion attempt. Only applies if maxNeuronCount is finite. Defaults to 0.85f.
  * @property defaultGrowthFactor The default factor by which the layer tries to expand its half-side length (e.g., 1.5 means 1.5x). Defaults to 1.5f.
- * @property eventHandler The EventHandler instance used by newly created neurons.
+ * @property signalTransmissionManager The EventHandler instance used by newly created neurons.
  */
 open class Layer(
     initialHalfSideLength: Float = 10.0f,
@@ -24,7 +24,7 @@ open class Layer(
 //    val maxHalfSideLength: Float = Float.POSITIVE_INFINITY,
     val growthThreshold: Float = 0.85f,
     private val defaultGrowthFactor: Float = 1.5f,
-    private val eventHandler: EventHandler
+    private val signalTransmissionManager: SignalTransmissionManager
 ) {
     init {
         require(initialHalfSideLength > 0) { "Initial half-side length must be positive." }
@@ -41,7 +41,7 @@ open class Layer(
             maxHalfSideLength: Float = 50f,
             growthThreshold: Float = 0.85f,
             defaultGrowthFactor: Float = 1.5f,
-            eventHandler: EventHandler = EventHandler.getInstance()
+            signalTransmissionManager: SignalTransmissionManager = SignalTransmissionManager.getInstance()
         ): Layer {
             if (instance == null) {
                 synchronized(this) {
@@ -51,7 +51,7 @@ open class Layer(
                             maxHalfSideLength,
                             growthThreshold,
                             defaultGrowthFactor,
-                            eventHandler
+                            signalTransmissionManager
                         )
                     }
                 }
@@ -111,7 +111,7 @@ open class Layer(
             return null
         }
 
-        val newNeuron = Neuron(coordinate = position, eventHandler = eventHandler, layer = this)
+        val newNeuron = Neuron(coordinate = position, signalTransmissionManager = signalTransmissionManager, layer = this)
         val existingNeuron = neurons.putIfAbsent(position, newNeuron)
 
         return if (existingNeuron == null) {
@@ -137,7 +137,7 @@ open class Layer(
         if (!isWithinBounds(position, currentBounds)) {
             return null
         }
-        val newNeuron = Neuron(coordinate = position, eventHandler = eventHandler, layer = this)
+        val newNeuron = Neuron(coordinate = position, signalTransmissionManager = signalTransmissionManager, layer = this)
         val existingNeuron = neurons.putIfAbsent(position, newNeuron)
         if (existingNeuron == null) {
             sourceNeuron?.connect(newNeuron.coordinate)

@@ -9,7 +9,7 @@ import java.util.concurrent.*
 import kotlin.math.exp
 
 class Neuron(
-    val coordinate: Position, private val eventHandler: EventHandler, private val layer: Layer = Layer.getInstance()
+    val coordinate: Position, private val signalTransmissionManager: SignalTransmissionManager, private val layer: Layer = Layer.getInstance()
 ) {
 
     private val connects: ConcurrentHashMap<Position, Float> = ConcurrentHashMap()
@@ -77,7 +77,7 @@ class Neuron(
                     distance = connects[position]!!,
                     timeSeq = timeSeq
                 )
-                eventHandler.submitEvent(event)
+                signalTransmissionManager.submitEvent(event)
             }
         }
 
