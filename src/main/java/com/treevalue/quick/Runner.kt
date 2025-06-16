@@ -10,8 +10,9 @@ class Runner {
         @JvmStatic
         fun main(args: Array<String>) {
             val transform = Transform.getInstance()
-            val feeling: INDArray = Nd4j.create(floatArrayOf(0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 1f, 0f), intArrayOf(10))
-            val except: INDArray = Nd4j.create(floatArrayOf(0f, 1f, 0f, 0f, 1f), intArrayOf(5))
+
+            val feeling = transform.getRandomInput(10)
+            val except = transform.getRandomOutput(10)
             for (idx in 0..5) {
                 transform.except(feeling, except)
                 val (eventId: UUID, pre1: INDArray) = transform.predicate(feeling)

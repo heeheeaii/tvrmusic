@@ -7,6 +7,7 @@ target/*
 src/test/output/*
 src/main/resources/static/music/*
 src/main/resources/static/data/*
+/task/*
 *.mp3
 *.wav
 *.pyc

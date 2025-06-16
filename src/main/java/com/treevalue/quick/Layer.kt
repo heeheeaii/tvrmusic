@@ -1,17 +1,18 @@
 package com.treevalue.quick
 
-import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.pow
+import kotlin.random.Random
 
 /**
  * Represents a growing medium for neurons, managing their positions and expansion.
  * The layer is a cube centered at (0,0,0).
- *
+ * 神经元附着面
+ * @property layerIdx idx in tranform order
  * @property initialHalfSideLength The initial half-side length of the cubic layer boundary.
  * @property maxHalfSideLength The maximum half-side length the layer can expand to. Use Float.POSITIVE_INFINITY for unlimited spatial growth.
  * @property growthThreshold The occupancy threshold (fraction of maxNeuronCount) that triggers an expansion attempt. Only applies if maxNeuronCount is finite. Defaults to 0.85f.
@@ -19,7 +20,8 @@ import kotlin.math.pow
  * @property signalTransmissionManager The EventHandler instance used by newly created neurons.
  */
 open class Layer(
-    initialHalfSideLength: Float = 10.0f,
+    val layerIdx: Int = 0,
+    val initialHalfSideLength: Float = 10.0f, // +,- scale
     val maxHalfSideLength: Float = 50f,
 //    val maxHalfSideLength: Float = Float.POSITIVE_INFINITY,
     val growthThreshold: Float = 0.85f,
@@ -37,6 +39,7 @@ open class Layer(
         private var instance: Layer? = null
 
         fun getInstance(
+            layerIdx: Int = 0,
             initialHalfSideLength: Float = 10.0f,
             maxHalfSideLength: Float = 50f,
             growthThreshold: Float = 0.85f,
@@ -47,6 +50,7 @@ open class Layer(
                 synchronized(this) {
                     if (instance == null) {
                         instance = Layer(
+                            layerIdx,
                             initialHalfSideLength,
                             maxHalfSideLength,
                             growthThreshold,
@@ -101,46 +105,49 @@ open class Layer(
      * Creates and places a new neuron at a specific position, connecting it to a source.
      * This method is called by the GrowthManager ONLY when a growth event is complete.
      *
-     * @param position The target position for the new neuron.
-     * @param sourceNeuron The neuron that initiated the growth.
+     * @param newPosition The target position for the new neuron.
+     * @param source other neuron , may be from outer
      * @return The newly created Neuron, or null if a neuron already exists there.
      */
-    fun connectNeuronTo(sourceNeuron: Neuron, position: Position): Neuron? {
+    fun connectNeuronTo(source: Neuron, newPosition: Position): Neuron? {
         val currentBounds = currentHalfSideLength.get()
-        if (!isWithinBounds(position, currentBounds)) {
+        if (!isWithinBounds(newPosition, currentBounds)) {
             return null
         }
 
-        val newNeuron = Neuron(coordinate = position, signalTransmissionManager = signalTransmissionManager, layer = this)
-        val existingNeuron = neurons.putIfAbsent(position, newNeuron)
+        val newNeuron =
+            Neuron(coordinate = newPosition, signalTransmissionManager = signalTransmissionManager, layer = this)
+        val existingNeuron = neurons.putIfAbsent(newPosition, newNeuron)
 
         return if (existingNeuron == null) {
-            sourceNeuron.connect(newNeuron.coordinate)
+            source.connect(newNeuron.coordinate)
 
             if (needsExpansion()) {
                 tryExpand()
             }
             newNeuron
         } else {
-            sourceNeuron.connect(existingNeuron.coordinate)
+            source.connect(existingNeuron.coordinate)
             null
         }
     }
 
     /**
-     * @param position The target position for the new neuron.
-     * @param sourceNeuron Optional: The neuron initiating the growth (used to establish initial connections).
+     * 在to生长一个神经元，如果有from的神经元从from连向to
+     * @param to The target position for the new neuron.
+     * @param fromNeuron Optional: The neuron initiating the growth (used to establish initial connections).
      * @return The newly created Neuron if growth was successful, null otherwise.
      */
-    fun grow(position: Position, sourceNeuron: Neuron? = null): Neuron? {
+    fun growTo(to: Position, fromNeuron: Neuron? = null): Neuron? {
         val currentBounds = currentHalfSideLength.get()
-        if (!isWithinBounds(position, currentBounds)) {
+        if (!isWithinBounds(to, currentBounds)) {
             return null
         }
-        val newNeuron = Neuron(coordinate = position, signalTransmissionManager = signalTransmissionManager, layer = this)
-        val existingNeuron = neurons.putIfAbsent(position, newNeuron)
+        val newNeuron =
+            Neuron(coordinate = to, signalTransmissionManager = signalTransmissionManager, layer = this)
+        val existingNeuron = neurons.putIfAbsent(to, newNeuron)
         if (existingNeuron == null) {
-            sourceNeuron?.connect(newNeuron.coordinate)
+            fromNeuron?.connect(newNeuron.coordinate)
             if (needsExpansion()) {
                 tryExpand()
             }
@@ -156,8 +163,7 @@ open class Layer(
     fun getAllNeurons(): Collection<Neuron> = neurons.values.toList()
     private fun isWithinBounds(position: Position, halfSide: Float): Boolean {
         return abs(position.x) <= halfSide &&
-                abs(position.y) <= halfSide &&
-                abs(position.z) <= halfSide
+                abs(position.y) <= halfSide
     }
 
     private fun needsExpansion(): Boolean {
@@ -208,5 +214,23 @@ open class Layer(
 
     override fun toString(): String {
         return "Layer(currentHalfSide=${currentHalfSideLength.get()}, maxHalfSide=$maxHalfSideLength, neuronCount=${neurons.size}, sequence=${timeCounter.get()})"
+    }
+
+    fun getRandomPosition(number: Int): Array<Position> {
+        if (number <= 0) {
+            return arrayOf()
+        }
+        val positions = mutableListOf<Position>()
+        val currentBounds = currentHalfSideLength.get()
+        val random = Random(System.nanoTime())
+
+        for (i in 0 until number) {
+            val x = random.nextFloat() * (2 * currentBounds) - currentBounds
+            val y = random.nextFloat() * (2 * currentBounds) - currentBounds
+            val z = layerIdx
+            positions.add(Position(x.toInt(), y.toInt(), z.toInt()))
+        }
+
+        return positions.toTypedArray()
     }
 }

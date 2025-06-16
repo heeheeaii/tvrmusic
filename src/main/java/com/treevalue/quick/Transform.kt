@@ -52,4 +52,12 @@ class Transform {
             instance ?: Transform().also { instance = it }
         }
     }
+
+    fun getRandomInput(number:  Int):Array<Position> {
+        return feelingLayer.getRandomPosition(number)
+    }
+
+    fun getRandomOutput(number:  Int):Array<Position>{
+        return feelingLayer.getRandomPosition(number)
+    }
 }
