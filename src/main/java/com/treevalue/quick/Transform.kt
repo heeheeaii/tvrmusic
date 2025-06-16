@@ -37,8 +37,14 @@ class Transform {
         return layerMap[layerIndex]?.getNeuron(position)
     }
 
-    fun except(feeling: INDArray, except: INDArray) {
-        GrowthManager.getInstance().requestGrowth(feeling, except)
+    fun except(feeling: List<Position>, except: List<Position>) {
+        feeling.forEach {
+            feelingLayer.growTo(it)
+        }
+        val match = GrowthManager.getInstance().getInOutMatch(feeling, except)
+        match.forEach { (inIdx, outIdx) ->
+            GrowthManager.getInstance().requestGrowth(feelingLayer.getNeuron(feeling[inIdx]), except[outIdx])
+        }
     }
 
     fun predicate(input: INDArray): Pair<UUID, INDArray> {
@@ -53,11 +59,11 @@ class Transform {
         }
     }
 
-    fun getRandomInput(number:  Int):Array<Position> {
+    fun getRandomInput(number: Int): List<Position> {
         return feelingLayer.getRandomPosition(number)
     }
 
-    fun getRandomOutput(number:  Int):Array<Position>{
+    fun getRandomOutput(number: Int): List<Position> {
         return feelingLayer.getRandomPosition(number)
     }
 }

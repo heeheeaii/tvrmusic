@@ -1,10 +1,10 @@
 import com.treevalue.quick.Point
 import java.util.PriorityQueue
-import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.sqrt
 
-class AStarPathfinder( // A* 算法 Admissible Optimal
+// A* 算法 Admissible Optimal, 输入输出点集分配
+class Pathfinder(
     private val numLayers: Int = 5, // 总层数
     private val numRow: Int = 32,   // 每层的行数
     private val numCol: Int = 32    // 每层的列数
@@ -73,7 +73,7 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
      *         边列表元素为 Pair<输入索引, 输出索引>
      */
     fun matchPointsByMinCost(
-        inputs: List<Point>, outputs: List<Point>, gridW: Int, gridH: Int
+        inputs: List<Point>, outputs: List<Point>, gridW: Int = numCol, gridH: Int = numRow
     ): Pair<List<Pair<Int, Int>>, Double> {
 
         checkBounds(inputs, gridW, gridH, "Input")
@@ -126,6 +126,7 @@ class AStarPathfinder( // A* 算法 Admissible Optimal
             edges += bestI to j
             total += bestC
         }
+        // 输入输出索引匹配， 总的距离
         return edges to total
     }
 

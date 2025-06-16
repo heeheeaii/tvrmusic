@@ -216,9 +216,9 @@ open class Layer(
         return "Layer(currentHalfSide=${currentHalfSideLength.get()}, maxHalfSide=$maxHalfSideLength, neuronCount=${neurons.size}, sequence=${timeCounter.get()})"
     }
 
-    fun getRandomPosition(number: Int): Array<Position> {
+    fun getRandomPosition(number: Int): List<Position> {
         if (number <= 0) {
-            return arrayOf()
+            return emptyList()
         }
         val positions = mutableListOf<Position>()
         val currentBounds = currentHalfSideLength.get()
@@ -231,6 +231,6 @@ open class Layer(
             positions.add(Position(x.toInt(), y.toInt(), z.toInt()))
         }
 
-        return positions.toTypedArray()
+        return positions
     }
 }

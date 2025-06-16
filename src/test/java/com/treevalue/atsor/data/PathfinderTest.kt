@@ -1,16 +1,16 @@
 package com.treevalue.atsor.data
 
-import AStarPathfinder
+import Pathfinder
 import com.treevalue.quick.Point
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 
-class AStarPathfinderTest {
+class PathfinderTest {
 
     private val layers = 5
     private val rows = 100
     private val cols = 100
-    private val pathfinder = AStarPathfinder(layers, rows, cols)
+    private val pathfinder = Pathfinder(layers, rows, cols)
 
     @Test
     fun `test case 1 - straight path`() {

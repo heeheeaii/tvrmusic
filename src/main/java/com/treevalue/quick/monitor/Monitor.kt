@@ -6,6 +6,11 @@ import java.util.UUID
 
 class Monitor {
     companion object {
+
+        fun areExceptEqual(tensor1: INDArray, tensor2: INDArray, threshold: Float = 0.001f): Boolean {
+            return false
+        }
+
         fun areTensorsEqual(tensor1: INDArray, tensor2: INDArray, threshold: Float = 0.001f): Boolean {
             if (tensor1.isEmpty || tensor2.isEmpty) {
                 return false

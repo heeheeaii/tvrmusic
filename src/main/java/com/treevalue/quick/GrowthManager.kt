@@ -1,6 +1,6 @@
 package com.treevalue.quick
 
-import AStarPathfinder
+import Pathfinder
 import java.util.UUID
 import java.util.concurrent.*
 
@@ -9,7 +9,7 @@ import java.util.concurrent.*
  * 外部顶层接口，接收输入层到输出层的生长请求
  */
 class GrowthManager private constructor(
-    private val pathfinder: AStarPathfinder,
+    private val pathfinder: Pathfinder,
     tickIntervalMs: Long = 50L,
     private val transform: Transform = Transform.getInstance(),
 ) {
@@ -19,7 +19,7 @@ class GrowthManager private constructor(
 
         fun getInstance(): GrowthManager = instance ?: synchronized(this) {
             instance ?: GrowthManager(
-                AStarPathfinder(numLayers = 5, numRow = 32, numCol = 32)
+                Pathfinder(numLayers = 5, numRow = 32, numCol = 32)
             ).also { instance = it }
         }
     }
@@ -39,7 +39,15 @@ class GrowthManager private constructor(
         growthExecutor.scheduleAtFixedRate(::processGrowthTick, 0L, tickIntervalMs, TimeUnit.MILLISECONDS)
     }
 
-    fun requestGrowth(sourceNeuron: Neuron, targetPosition: Position) {
+    fun getInOutMatch(input: List<Position>, output: List<Position>): List<Pair<Int, Int>> {
+        val (match, _) = pathfinder.matchPointsByMinCost(input, output)
+        return match
+    }
+
+    fun requestGrowth(sourceNeuron: Neuron?, targetPosition: Position) {
+        if (sourceNeuron == null) {
+            return
+        }
         val requestKey = sourceNeuron.coordinate to targetPosition
 
         activeGrowthProcessByHeadTail[requestKey]?.let { existingProcess ->
