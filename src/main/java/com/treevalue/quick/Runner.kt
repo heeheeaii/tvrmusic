@@ -12,9 +12,7 @@ class Runner {
             val transform = Transform.getInstance()
 
             val feeling = transform.getRandomInput(10)
-            val feelingTensor: INDArray = transform.transPositionToTensor(feeling, transform.inputShape())
             val except = transform.getRandomOutput(10)
-            val exceptTensor: INDArray = transform.transPositionToTensor(except, transform.outputShape())
             var predicated: INDArray? = null
             for (idx in 0..3) {
                 val predRst = transform.predicate(feeling)
@@ -29,6 +27,7 @@ class Runner {
                 }
             }
             predicated?.let {
+                val exceptTensor: INDArray = transform.transPositionToTensor(except, transform.outputShape())
                 println(Monitor.areTensorsEqual(exceptTensor, it))
             }
         }

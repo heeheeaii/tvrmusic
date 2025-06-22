@@ -147,17 +147,17 @@ open class Layer(
         if (!isWithinBounds(to, currentBounds)) {
             return null
         }
-        val newNeuron = Neuron(coordinate = to, signalTransmissionManager = signalTransmissionManager, layer = this)
-        val existingNeuron = neurons.putIfAbsent(to, newNeuron)
-        if (existingNeuron == null) {
-            fromNeuron?.connect(newNeuron.coordinate)
-            if (needsExpansion()) {
-                tryExpand()
-            }
-            return newNeuron
-        } else {
-            return null
+        var toNeuron: Neuron? = neurons[to]
+        toNeuron?.let {
+            toNeuron = Neuron(coordinate = to, signalTransmissionManager = signalTransmissionManager, layer = this)
+            neurons[to] = toNeuron!!
         }
+
+        fromNeuron?.connect(toNeuron!!.coordinate)
+        if (needsExpansion()) {
+            tryExpand()
+        }
+        return toNeuron
     }
 
     fun getNeuronCount(): Int = neurons.size
