@@ -12,9 +12,14 @@ class Runner {
             val transform = Transform.getInstance()
 
             val feeling = transform.getRandomInput(10)
+            val feelingTensor: INDArray = transform.transPositionToTensor(feeling, transform.inputShape())
             val except = transform.getRandomOutput(10)
+            val exceptTensor: INDArray = transform.transPositionToTensor(except, transform.outputShape())
+            var predicated: INDArray? = null
             for (idx in 0..3) {
-                val (eventId: UUID, predicated: INDArray) = transform.predicate(feeling)
+                val predRst = transform.predicate(feeling)
+                val eventId: UUID = predRst.first
+                predicated = predRst.second
                 val isOk: Boolean = Monitor.arePosEqual(feeling, except)
                 if (!isOk) {
                     transform.reinforce(except, predicated, eventId)
@@ -23,10 +28,9 @@ class Runner {
                     break
                 }
             }
-
-//            AStarPathfinder().matchPointsByMinCost()
-//            transform.active()
-//            GrowthManager.getInstance().requestGrowth()
+            predicated?.let {
+                println(Monitor.areTensorsEqual(exceptTensor, it))
+            }
         }
     }
 }

@@ -1,7 +1,10 @@
 package com.treevalue.quick
 
+import com.treevalue.quick.data.WHShape
 import com.treevalue.quick.layer.*
 import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.cpu.nativecpu.bindings.Nd4jCpu.NDArray
+import org.nd4j.linalg.factory.Nd4j
 import java.util.*
 import kotlin.math.max
 import kotlin.math.sqrt
@@ -14,17 +17,15 @@ class Transform {
     private val outputLayer: OutputLayer = OutputLayer(signalTransmissionManager = signalTransmissionManager)
     private val feedbackLayer: FeedbackLayer = FeedbackLayer(signalTransmissionManager = signalTransmissionManager)
     private val layerMap: Map<Int, Layer> = mapOf(
-        0 to feelingLayer,
-        1 to shallowLayer,
-        2 to deepLayer,
-        3 to outputLayer,
-        4 to feedbackLayer
+        0 to feelingLayer, 1 to shallowLayer, 2 to deepLayer, 3 to outputLayer, 4 to feedbackLayer
     )
 
     init {
         signalTransmissionManager.startProcessing()
     }
 
+    fun inputShape() = feelingLayer.getShape()
+    fun outputShape() = outputLayer.getShape()
     fun input(feeling: INDArray) {
         feelingLayer.input(feeling)
     }
@@ -141,10 +142,7 @@ class Transform {
      *         边列表元素为 Pair<输入索引, 输出索引>
      */
     fun matchPointsByMinCost(
-        inputs: List<Point>,
-        outputs: List<Point>,
-        gridW: Int,
-        gridH: Int
+        inputs: List<Point>, outputs: List<Point>, gridW: Int, gridH: Int
     ): Pair<List<Pair<Int, Int>>, Double> {
 
         checkBounds(inputs, gridW, gridH, "Input")
@@ -228,10 +226,7 @@ class Transform {
      * 获取一个点的所有有效邻居 (即下一层的所有点)
      */
     private fun getNeighbors(
-        point: Point,
-        numLayers: Int = 5,
-        numRow: Int = 32,
-        numCol: Int = 32
+        point: Point, numLayers: Int = 5, numRow: Int = 32, numCol: Int = 32
     ): List<Point> {
         val neighbors = mutableListOf<Point>()
         if (point.z < numLayers - 1) { // 如果不是最后一层
@@ -265,10 +260,7 @@ class Transform {
      * @return Pair(路径列表, 总成本)? 如果找到路径则返回路径和成本，否则返回 null
      */
     fun findPath(
-        start: Point, goal: Point,
-        numLayers: Int = 5,
-        numRow: Int = 32,
-        numCol: Int = 32
+        start: Point, goal: Point, numLayers: Int = 5, numRow: Int = 32, numCol: Int = 32
     ): Pair<List<Point>, Double>? {
         // 基本校验
         if (start == goal) {
@@ -352,5 +344,15 @@ class Transform {
         } else {
             println("未能找到从 $start 到 $goal 的路径。")
         }
+    }
+
+    fun transPositionToTensor(feeling: List<Position>, shape: WHShape): INDArray {
+        val tensor = Nd4j.create(shape.width, shape.height)
+        feeling.asSequence().forEach {
+            if (it.x >= 0 && it.x < shape.width && it.y >= 0 && it.y < shape.height) {
+                tensor.putScalar(intArrayOf(it.x, it.y), 1)
+            }
+        }
+        return tensor
     }
 }
