@@ -13,12 +13,12 @@ class Runner {
 
             val feeling = transform.getRandomInput(10)
             val except = transform.getRandomOutput(10)
-            for (idx in 0..5) {
-                transform.except(feeling, except)
-                val (eventId: UUID, pre1: INDArray) = transform.predicate(feeling)
-                val isOk = Monitor.areTensorsEqual(feeling.toTypedArray(), except.toTypedArray())
+            for (idx in 0..3) {
+                val (eventId: UUID, predicated: INDArray) = transform.predicate(feeling)
+                val isOk: Boolean = Monitor.arePosEqual(feeling, except)
                 if (!isOk) {
-                    Monitor.reinforce(except, pre1, eventId)
+                    transform.reinforce(except, predicated, eventId)
+                    transform.except(feeling, except)
                 } else {
                     break
                 }

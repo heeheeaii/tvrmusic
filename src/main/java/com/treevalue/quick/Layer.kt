@@ -1,5 +1,6 @@
 package com.treevalue.quick
 
+import com.treevalue.quick.data.WHShape
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
@@ -21,8 +22,8 @@ import kotlin.random.Random
  */
 open class Layer(
     val layerIdx: Int = 0,
-    val initialHalfSideLength: Float = 10.0f, // +,- scale
-    val maxHalfSideLength: Float = 50f,
+    val initialHalfSideLength: Int = 16, // +,- scale
+    val maxHalfSideLength: Int = 16,
 //    val maxHalfSideLength: Float = Float.POSITIVE_INFINITY,
     val growthThreshold: Float = 0.85f,
     private val defaultGrowthFactor: Float = 1.5f,
@@ -35,13 +36,16 @@ open class Layer(
         require(defaultGrowthFactor > 1.0f) { "Default growth factor must be greater than 1.0." }
     }
 
+
+    fun getShape(): WHShape = WHShape(initialHalfSideLength * 2, initialHalfSideLength * 2)
+
     companion object {
         private var instance: Layer? = null
 
         fun getInstance(
             layerIdx: Int = 0,
-            initialHalfSideLength: Float = 10.0f,
-            maxHalfSideLength: Float = 50f,
+            initialHalfSideLength: Int = 10,
+            maxHalfSideLength: Int = 50,
             growthThreshold: Float = 0.85f,
             defaultGrowthFactor: Float = 1.5f,
             signalTransmissionManager: SignalTransmissionManager = SignalTransmissionManager.getInstance()
@@ -65,7 +69,7 @@ open class Layer(
     }
 
     private val neurons: ConcurrentHashMap<Position, Neuron> = ConcurrentHashMap()
-    private val currentHalfSideLength: AtomicReference<Float> = AtomicReference(initialHalfSideLength)
+    private val currentHalfSideLength: AtomicReference<Int> = AtomicReference(initialHalfSideLength)
     private val expansionLock = ReentrantLock()
     private val growthFactors = listOf(defaultGrowthFactor, 1.4f, 1.3f, 1.2f, 1.1f)
 
@@ -143,8 +147,7 @@ open class Layer(
         if (!isWithinBounds(to, currentBounds)) {
             return null
         }
-        val newNeuron =
-            Neuron(coordinate = to, signalTransmissionManager = signalTransmissionManager, layer = this)
+        val newNeuron = Neuron(coordinate = to, signalTransmissionManager = signalTransmissionManager, layer = this)
         val existingNeuron = neurons.putIfAbsent(to, newNeuron)
         if (existingNeuron == null) {
             fromNeuron?.connect(newNeuron.coordinate)
@@ -159,11 +162,11 @@ open class Layer(
 
     fun getNeuronCount(): Int = neurons.size
 
-    fun getCurrentHalfSideLength(): Float = currentHalfSideLength.get()
+    fun getCurrentHalfSideLength(): Int = currentHalfSideLength.get()
+
     fun getAllNeurons(): Collection<Neuron> = neurons.values.toList()
-    private fun isWithinBounds(position: Position, halfSide: Float): Boolean {
-        return abs(position.x) <= halfSide &&
-                abs(position.y) <= halfSide
+    private fun isWithinBounds(position: Position, halfSide: Int): Boolean {
+        return abs(position.x) <= halfSide && abs(position.y) <= halfSide
     }
 
     private fun needsExpansion(): Boolean {
@@ -187,7 +190,8 @@ open class Layer(
             var expansionSuccessful = false
             for (factor in growthFactors) {
                 val potentialNewHalfSide = currentBounds * factor
-                val targetHalfSide = min(potentialNewHalfSide, maxHalfSideLength)
+
+                val targetHalfSide = min(potentialNewHalfSide.toInt(), maxHalfSideLength)
                 if (targetHalfSide > currentBounds) {
                     if (currentHalfSideLength.compareAndSet(currentBounds, targetHalfSide)) {
                         println("Layer expanded from $currentBounds to $targetHalfSide (Factor: $factor).")
@@ -216,19 +220,64 @@ open class Layer(
         return "Layer(currentHalfSide=${currentHalfSideLength.get()}, maxHalfSide=$maxHalfSideLength, neuronCount=${neurons.size}, sequence=${timeCounter.get()})"
     }
 
-    fun getRandomPosition(number: Int): List<Position> {
-        if (number <= 0) {
+    fun getRandom(number: Int): List<Pair<Int, Int>> {
+        val currentBounds = currentHalfSideLength.get()
+
+        val sideLength = (2L * currentBounds + 1)
+        val maxPossiblePositions = sideLength * sideLength
+        if (number <= 0 || number > maxPossiblePositions) {
             return emptyList()
         }
-        val positions = mutableListOf<Position>()
-        val currentBounds = currentHalfSideLength.get()
-        val random = Random(System.nanoTime())
+        val interval = (maxPossiblePositions.toDouble() / number).toInt()
 
-        for (i in 0 until number) {
-            val x = random.nextFloat() * (2 * currentBounds) - currentBounds
-            val y = random.nextFloat() * (2 * currentBounds) - currentBounds
-            val z = layerIdx
-            positions.add(Position(x.toInt(), y.toInt(), z.toInt()))
+        val positions = mutableListOf<Pair<Int, Int>>()
+        val random = Random.Default
+        for (i in 0L until number) {
+            val startIndex = i * interval.toLong()
+            val endIndex = min((i + 1) * interval, maxPossiblePositions)
+            val randomIndexInInterval = random.nextLong(startIndex, endIndex)
+            val x = (randomIndexInInterval / sideLength).toInt() - currentBounds
+            val y = (randomIndexInInterval % sideLength).toInt() - currentBounds
+            positions.add(x to y)
+        }
+        return positions
+    }
+
+    fun getRandomPosition(number: Int): List<Position> {
+        val currentBounds = currentHalfSideLength.get()
+        val currentLayerZ = layerIdx
+
+        val sideLength = (2L * currentBounds + 1)
+        val maxPossiblePositions = sideLength * sideLength
+
+        if (number <= 0 || number > maxPossiblePositions) {
+            return emptyList()
+        }
+
+        val interval = (maxPossiblePositions.toDouble() / number).toLong()
+
+        val positions = mutableListOf<Position>()
+        val random = Random.Default
+        val generatedIndices = mutableSetOf<Long>()
+
+        var count = 0
+        while (count < number) {
+            val theoreticalStartIndex = count * interval
+            val theoreticalEndIndex = (count + 1) * interval
+
+            val actualEndIndexForSample = min(theoreticalEndIndex, maxPossiblePositions)
+
+            val randomIndexInInterval = random.nextLong(theoreticalStartIndex, actualEndIndexForSample)
+
+            if (!generatedIndices.add(randomIndexInInterval)) {
+                continue
+            }
+
+            val x = (randomIndexInInterval / sideLength).toInt() - currentBounds
+            val y = (randomIndexInInterval % sideLength).toInt() - currentBounds
+
+            positions.add(Position(x, y, currentLayerZ))
+            count++
         }
 
         return positions

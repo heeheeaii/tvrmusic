@@ -1,5 +1,6 @@
 package com.treevalue.quick.monitor
 
+import com.treevalue.quick.Position
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.ops.transforms.Transforms
 import java.util.UUID
@@ -29,8 +30,10 @@ class Monitor {
             return norm < threshold
         }
 
-        fun reinforce(except: INDArray, predicated: INDArray, eventId: UUID) {
-
+        fun arePosEqual(feeling: List<Position>, except: List<Position>): Boolean {
+            val feelingCounts = feeling.groupingBy { it }.eachCount()
+            val exceptCounts = except.groupingBy { it }.eachCount()
+            return feelingCounts == exceptCounts
         }
     }
 }
